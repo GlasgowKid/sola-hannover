@@ -1,4 +1,4 @@
-import type { Person } from './utils/ct-types';
+import type { Person, Group, GroupMember } from './utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 
 // only import reset.css in development mode to keep the production bundle small and to simulate CT environment
@@ -27,8 +27,13 @@ export { KEY };
 
 const user = await churchtoolsClient.get<Person>(`/whoami`);
 
+const groups = await churchtoolsClient.get<Group[]>('/groups');
+const data = await churchtoolsClient.get<GroupMember[]>('/groups/32/members');
+
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div style="display: flex; place-content: center; place-items: center; height: 100vh;">
     <h1>Welcome ${[user.firstName, user.lastName].join(' ')}</h1>
+    <p>${groups[0].name}</p>
+    <p>${data[3].person.title}</p>
   </div>
 `;
