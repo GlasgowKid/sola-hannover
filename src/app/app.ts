@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
-import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { GroupMember } from '../utils/ct-types';
-import { environment } from '../environments/environment';
+import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { ChurchtoolsService } from './churchtools.service';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -12,20 +13,11 @@ import { environment } from '../environments/environment';
 })
 export class App implements OnInit {
   protected readonly title = signal('sola-hannover');
-  groupMembers = signal<GroupMember[]>([]);
+  private readonly churchToolsService = inject(ChurchtoolsService);
+  groups$ = this.churchToolsService.getChildrenGroups(73);
+  groupMembers$ = this.churchToolsService.getUsersFromGroup(32);
 
   ngOnInit(): void {
-    const baseUrl = environment.ctBaseUrl;
-    churchtoolsClient.setBaseUrl(baseUrl);
-
-    const username = environment.ctUsername;
-    const password = environment.ctPassword;
-
-    churchtoolsClient.post('/login', { username, password }).then((login) => {
-      churchtoolsClient.get<GroupMember[]>(`/groups/32/members`).then(groupMembers => {
-        this.groupMembers.set(groupMembers);
-      });
-    });
 
   }
   
@@ -36,10 +28,13 @@ export class App implements OnInit {
       const today = new Date();
       
       let age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = 7 - birthDate.getMonth();
-      if (monthDiff < 0 ) {
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+      // Adjust if the birthday hasn't happened yet this year
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
         age--;
       }
+  
       return age;
     }
   // Inside your App component class
