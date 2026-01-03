@@ -22,10 +22,10 @@ if (!fs.existsSync(releasesDir)) fs.mkdirSync(releasesDir, { recursive: true });
 const archiveName = `${projectName}-v${version}-${gitHash}.zip`;
 const archivePath = path.join(releasesDir, archiveName);
 
-const distDir = path.join(rootDir, 'dist', projectName, 'browser');
+const distDir = path.join(rootDir, 'dist');
 
 if (!fs.existsSync(distDir)) {
-    console.error(`❌ Build-Ordner nicht gefunden: ${buildOutputDir}`);
+    console.error(`❌ Build-Ordner nicht gefunden: ${distDir}`);
     process.exit(1);
 }
 
@@ -37,7 +37,7 @@ if (fs.existsSync(indexPath)) {
     const replacement = `src="/ccm/${extensionKey}/$1"`;
     
     html = html.replace(search, replacement);
-    html = html.replace(/href="styles-([^"]+)\.css"/g, `href="/ccm/${extensionKey}/styles-$1.css"`);
+    html = html.replace(/href="styles.([^"]+)\.css"/g, `href="/ccm/${extensionKey}/styles.$1.css"`);
     
     fs.writeFileSync(indexPath, html);
     console.log('✅ index.html Pfade auf absolut korrigiert.');
@@ -56,6 +56,5 @@ output.on('close', () => {
 });
 
 archive.pipe(output);
-// archive.glob('**/*', { cwd: distDir, ignore: ['**/*.map'] });
-archive.directory(distDir, 'dist');
+archive.glob('**/*', { cwd: distDir, ignore: ['**/*.map'] });
 archive.finalize();
