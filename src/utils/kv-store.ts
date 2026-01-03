@@ -10,6 +10,7 @@ import type {
     CustomModuleDataValue,
     CustomModuleDataValueCreate,
 } from "./ct-types";
+import { environment } from "../environments/environment";
 
 /**
  * ────────────────────────────────────────────────
@@ -22,7 +23,7 @@ import type {
  * @returns  the custom module
  */
 export async function getModule(
-    extensionkey: string = "svs" // import.meta.env.VITE_KEY,
+    extensionkey: string = environment.extensionKey,
 ): Promise<CustomModule> {
     //console.log("Extension Key:", extensionkey);
     const allModules: Array<CustomModule> =
