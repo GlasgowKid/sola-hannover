@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ts-node setup-env.ts && ng serve",
-    "build": "ts-node setup-env.ts && ng build",
+    "start": "node scripts/setup-env.js development && ng serve",
+    "build": "node scripts/setup-env.js production && ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
