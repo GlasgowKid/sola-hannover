@@ -28,4 +28,27 @@ export class App implements OnInit {
     });
 
   }
+  
+    getAge(birthday: string | unknown): number | string {
+      if (typeof birthday !== 'string') return '';
+  
+      const birthDate = new Date(birthday);
+      const today = new Date();
+      
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = 7 - birthDate.getMonth();
+      if (monthDiff < 0 ) {
+        age--;
+      }
+      return age;
+    }
+  // Inside your App component class
+  getExtraField(member: any, fieldName: string): string {
+    if (!member.fields) return '';
+    const field = member.fields.find((f: any) => f.name === fieldName);
+    return field ? field.value : '';
+  }
+  getPersonField(member: any, key: string): any {
+    return member.personFields ? (member.personFields as any)[key] : null;
+  }
 }
