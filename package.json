@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ts-node set-env.ts && ng serve",
-    "build": "ts-node set-env.ts && ng build",
+    "start": "ts-node setup-env.ts && ng serve",
+    "build": "ts-node setup-env.ts && ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
@@ -40,6 +40,7 @@
     "@types/node": "^24.3.0",
     "dotenv": "^17.2.3",
     "jsdom": "^27.1.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
   }

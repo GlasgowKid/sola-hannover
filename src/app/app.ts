@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { GroupMember } from '../utils/ct-types';
+import { environment } from '../environments/environment.development';
 
 @Component({
   selector: 'app-root',
@@ -14,11 +15,11 @@ export class App implements OnInit {
   groupMembers = signal<GroupMember[]>([]);
 
   ngOnInit(): void {
-    const baseUrl = "";
+    const baseUrl = environment.ctBaseUrl;
     churchtoolsClient.setBaseUrl(baseUrl);
 
-    const username = "";
-    const password = "";
+    const username = environment.ctUsername;
+    const password = environment.ctPassword;
 
     churchtoolsClient.post('/login', { username, password }).then((login) => {
       churchtoolsClient.get<GroupMember[]>(`/groups/32/members`).then(groupMembers => {
