@@ -8,6 +8,7 @@ This project provides a boilerplate for building your own extension for [ChurchT
 
 -   Node.js (version compatible with the project)
 -   npm or yarn
+-   Angular v21
 
 ### Installation
 
@@ -41,12 +42,12 @@ In the `.env` file, configure the necessary constants for your project. This fil
 Start a development server with hot-reload:
 
 ```bash
-npm run dev
+ng serve
 ```
 
 > **Note:** For local development, make sure to configure CORS in your ChurchTools
 > instance to allow requests from your local development server
-> (typically `http://localhost:5173`).
+> (typically `http://localhost:4200`).
 > This can be done in the ChurchTools admin settings under:
 > "System Settings" > "Integrations" > "API" > "Cross-Origin Resource Sharing"
 >
@@ -65,23 +66,39 @@ npm run dev
 To create a production build:
 
 ```bash
-npm run build
+ng build
 ```
 
-### Preview Production Build
+This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
-To preview the production build locally:
+## Running unit tests
+
+To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
 
 ```bash
-npm run preview
+ng test
 ```
+
+## Running end-to-end tests
+
+For end-to-end (e2e) testing, run:
+
+```bash
+ng e2e
+```
+
+Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+
+## Additional Resources
+
+For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
 
 ### Deployment
 
 To build and package your extension for deployment:
 
 ```bash
-npm run deploy
+ng build
 ```
 
 This command will:
