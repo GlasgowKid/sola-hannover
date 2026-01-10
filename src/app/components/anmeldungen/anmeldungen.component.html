@@ -1,27 +1,28 @@
-<ng-container *ngIf="solawochen$ | async; let solawochenMap">
-    <ng-container *ngFor="let entry of solawochenMap | keyvalue">
-        <h1 >{{ entry.key.name }}</h1>
+<div class="container mt-5">
+    <div [formGroup]="formGroup" class="input-group mb-3">
+        <select *ngIf="jahre$ | async; let jahre" formControlName="selectedYear" class="form-select" [class.text-secondary]="!formGroup.value.selectedYear">
+            <option [ngValue]="null" selected disabled>Jahr</option>
+            <option *ngFor="let jahr of jahre" [ngValue]="jahr.id">{{ jahr.name }}</option>
+        </select>
+        <select *ngIf="solawochen$ | async; let solawochen" formControlName="selectedWeek" class="form-select" [class.text-secondary]="!formGroup.value.selectedWeek">
+            <option [ngValue]="null" selected disabled>Solawoche</option>
+            <option *ngFor="let solawoche of solawochen" [ngValue]="solawoche.id">{{ solawoche.name }}</option>
+        </select>
+    </div>
+    <div *ngIf="anmeldungen$ | async; let anmeldungen" class="member-list">
+      <div *ngFor="let anmeldung of anmeldungen" class="member-item">
+        <h3>{{ anmeldung.person.title}}</h3>
+        <h3>{{ anmeldung.personFields?.sexId}}</h3>
         <ul>
-            <li *ngFor="let solawoche of entry.value">{{ solawoche.name }}</li>
+          <li>Age: {{ getAge(anmeldung.personFields?.birthday) }}</li>
+          
+          <li>Stammeszugehörigkeit: {{ getExtraField(anmeldung, 'Stammeszugehörigkeit') }}</li>
+          <li>Wunsch 1: {{ getExtraField(anmeldung, 'Wunsch 1') }}</li>
+          <li>Wunsch 2: {{ getExtraField(anmeldung, 'Wunsch 2') }}</li>
         </ul>
-    </ng-container>
-</ng-container>
+        <hr>
+      </div>
+    </div>
+</div>
 
 
-<div>--------------------------------------------------------------------------------------------------------------------------------</div>
-
-<!-- <div class="member-list">
-  <div *ngFor="let groupMember of (groupMembers$ | async)" class="member-item">
-    <h3>{{ groupMember.person.title}}</h3>
-    <h3>{{ groupMember.personFields?.sexId}}</h3>
-    
-    <ul>
-      <li>Age: {{ getAge(groupMember.personFields?.birthday) }}</li>
-      
-      <li>Stammeszugehörigkeit: {{ getExtraField(groupMember, 'Stammeszugehörigkeit') }}</li>
-      <li>Wunsch 1: {{ getExtraField(groupMember, 'Wunsch 1') }}</li>
-      <li>Wunsch 2: {{ getExtraField(groupMember, 'Wunsch 2') }}</li>
-    </ul>
-    <hr>
-  </div>
-</div> -->

@@ -1,34 +1,41 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { map, mergeMap, of, switchMap } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter, map, mergeMap, of, switchMap, tap } from 'rxjs';
 import { Group } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-anmeldungen',
-  imports: [CommonModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './anmeldungen.component.html',
   styleUrl: './anmeldungen.component.scss',
 })
 export class AnmeldungenComponent {
   private readonly churchToolsService = inject(ChurchtoolsService);
+  private readonly fb = inject(FormBuilder);
+
+  formGroup = this.fb.group({
+    selectedYear: this.fb.control<number | null>(null),
+    selectedWeek: this.fb.control<number | null>(null),
+  })
+
   groupTypes$ = this.churchToolsService.getGroupTypes();
   jahre$ = this.churchToolsService.getJahre();
-  groupMembers$ = this.churchToolsService.getUsersFromGroup(32);
+  
+  solawochen$ = this.formGroup.controls.selectedYear.valueChanges.pipe(
+    distinctUntilChanged(),
+    debounceTime(1000),
+    tap(() => this.formGroup.controls.selectedWeek.reset()),
+    filter(value => !!value),
+    switchMap(groupId => this.churchToolsService.getSolawochen(groupId!)),
+  );
 
-  solawochen$ = this.jahre$.pipe(
-    mergeMap(jahre => jahre.reduce(
-      (result$, jahr) => result$.pipe(
-        switchMap(result => this.churchToolsService.getSolawochen(jahr.id).pipe(
-          map(solawochen => {
-            console.log({ result, solawochen })
-            result.set(jahr, solawochen);
-            return result;
-          })
-        ))
-      ),
-      of(new Map<Group, Group[]>)
-    ))
+  anmeldungen$ = this.formGroup.controls.selectedWeek.valueChanges.pipe(
+    distinctUntilChanged(),
+    debounceTime(1000),
+    filter(value => !!value),
+    switchMap(groupId => this.churchToolsService.getAnmeldungen(groupId!)),
   );
 
   getAge(birthday: string | unknown): number | string {

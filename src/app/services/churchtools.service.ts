@@ -56,21 +56,12 @@ export class ChurchtoolsService {
     }
   }
 
-  getChildrenGroups(group: number): Observable<DomainObjectGroup[]> {
-    return this.loggedIn$.pipe(
-      switchMap(
-        (loggedIn) => loggedIn
-          ? from(churchtoolsClient.get<DomainObjectGroup[]>(`/groups/${group}/children?limit=100`))
-          : of([])
-      )
-    );
-  }
-
-  getUsersFromGroup(group: number): Observable<GroupMember[]> {
+  getAnmeldungen(groupId: number): Observable<GroupMember[]> {
+    const params = { personFields: ["birthday", "sexId"] };
     return this.loggedIn$.pipe(
       switchMap(
         (loggedIn) => loggedIn 
-          ? from(churchtoolsClient.get<GroupMember[]>(`/groups/${group}/members?limit=200&personFields[]=birthday&personFields[]=sexID`))
+          ? from(churchtoolsClient.get<GroupMember[]>(`/groups/${groupId}/members`, params))
           : of([])
       )
     );
