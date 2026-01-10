@@ -1,28 +1,84 @@
 <div class="container mt-5">
-    <div [formGroup]="formGroup" class="input-group mb-3">
-        <select *ngIf="jahre$ | async; let jahre" formControlName="selectedYear" class="form-select" [class.text-secondary]="!formGroup.value.selectedYear">
-            <option [ngValue]="null" selected disabled>Jahr</option>
-            <option *ngFor="let jahr of jahre" [ngValue]="jahr.id">{{ jahr.name }}</option>
-        </select>
-        <select *ngIf="solawochen$ | async; let solawochen" formControlName="selectedWeek" class="form-select" [class.text-secondary]="!formGroup.value.selectedWeek">
-            <option [ngValue]="null" selected disabled>Solawoche</option>
-            <option *ngFor="let solawoche of solawochen" [ngValue]="solawoche.id">{{ solawoche.name }}</option>
-        </select>
-    </div>
-    <div *ngIf="anmeldungen$ | async; let anmeldungen" class="member-list">
-      <div *ngFor="let anmeldung of anmeldungen" class="member-item">
-        <h3>{{ anmeldung.person.title}}</h3>
-        <h3>{{ anmeldung.personFields?.sexId}}</h3>
-        <ul>
-          <li>Age: {{ getAge(anmeldung.personFields?.birthday) }}</li>
-          
-          <li>Stammeszugehörigkeit: {{ getExtraField(anmeldung, 'Stammeszugehörigkeit') }}</li>
-          <li>Wunsch 1: {{ getExtraField(anmeldung, 'Wunsch 1') }}</li>
-          <li>Wunsch 2: {{ getExtraField(anmeldung, 'Wunsch 2') }}</li>
-        </ul>
-        <hr>
-      </div>
-    </div>
+  <div [formGroup]="formGroup" class="input-group mb-3">
+    <select
+      *ngIf="jahre$ | async; let jahre"
+      formControlName="selectedYear"
+      class="form-select"
+      [class.text-secondary]="!formGroup.value.selectedYear"
+    >
+      <option [ngValue]="null" selected disabled>Jahr</option>
+      <option *ngFor="let jahr of jahre" [ngValue]="jahr.id">{{ jahr.name }}</option>
+    </select>
+    <select
+      *ngIf="solawochen$ | async; let solawochen"
+      formControlName="selectedWeek"
+      class="form-select"
+      [class.text-secondary]="!formGroup.value.selectedWeek"
+    >
+      <option [ngValue]="null" selected disabled>Solawoche</option>
+      <option *ngFor="let solawoche of solawochen" [ngValue]="solawoche.id">
+        {{ solawoche.name }}
+      </option>
+    </select>
+  </div>
+  <ngx-datatable
+    #datatable
+    [rows]="anmeldungen$ | async"
+    [messages]="{ emptyMessage: 'Keine Daten', totalMessage: 'insgesamt' }"
+    [headerHeight]="50"
+    [rowHeight]="50"
+    [footerHeight]="50"
+    columnMode="force"
+    class="bootstrap"
+  >
+    <ngx-datatable-row-detail #myDetailRow [rowHeight]="100">
+      <ng-template let-row="row" ngx-datatable-row-detail-template>
+        <dl *ngIf="row.fields.length">
+          <ng-container *ngFor="let field of row.fields">
+            <dt>{{ field.name }}</dt>
+            <dd>{{ field.value }}</dd>
+          </ng-container>
+        </dl>
+      </ng-template>
+    </ngx-datatable-row-detail>
+
+    <ngx-datatable-column
+      [width]="50"
+      [resizeable]="false"
+      [sortable]="false"
+      [draggable]="false"
+      [canAutoResize]="false"
+    >
+      <ng-template let-row="row" let-expanded="expanded" ngx-datatable-cell-template>
+        <a
+          *ngIf="row.fields.length"
+          href="javascript:void(0)"
+          title="Expand/Collapse Row"
+          [class.datatable-icon-right]="!expanded"
+          [class.datatable-icon-down]="expanded"
+          (click)="datatable.rowDetail?.toggleExpandRow(row)"
+        >
+        </a>
+      </ng-template>
+    </ngx-datatable-column>
+
+    <ngx-datatable-column
+      prop="person.domainAttributes.firstName"
+      name="Vorname"
+    ></ngx-datatable-column>
+    <ngx-datatable-column
+      prop="person.domainAttributes.lastName"
+      name="Nachname"
+    ></ngx-datatable-column>
+    <ngx-datatable-column prop="personFields.birthday" name="Geburtstag">
+      <ng-template ngx-datatable-cell-template let-value="value">{{
+        value | date : 'dd.MM.yyyy'
+      }}</ng-template>
+    </ngx-datatable-column>
+    <ngx-datatable-column prop="personFields.sexId" name="m/w">
+      <ng-template ngx-datatable-cell-template let-value="value"
+        >{{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}</ng-template
+      >
+    </ngx-datatable-column>
+  </ngx-datatable>
 </div>
-
-

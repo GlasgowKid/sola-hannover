@@ -1,0 +1,16 @@
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+  align-items: baseline;
+}
+
+dt {
+  font-weight: bold;
+  grid-column: 1;
+}
+
+dd {
+  margin: 0;
+  grid-column: 2;
+}

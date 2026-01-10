@@ -1,4 +1,97 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@siemens/ngx-datatable/themes/bootstrap' as siemens-bootstrap;
+@use 'bootstrap/scss/bootstrap' as bs;
 
-/* Importing Bootstrap SCSS file. */
-@import "bootstrap/scss/bootstrap";
+.ngx-datatable.bootstrap {
+  @extend .table;
+}
+
+.ngx-datatable.bootstrap .datatable-header-cell-label {
+  font-weight: bold;
+}
+
+.ngx-datatable.bootstrap .datatable-header-cell.sort-active {
+	display: flex;
+	justify-content: space-between;
+	&.sort-asc::after {
+		font-size: small;
+		color: var(--bs-secondary);
+		content: "\25B2";
+	}
+	&.sort-desc::after {
+		font-size: small;
+		color: var(--bs-secondary);
+		content: "\25BC";
+	}
+}
+
+.ngx-datatable.bootstrap .datatable-row-detail {
+  height: auto !important;
+}
+
+.ngx-datatable.bootstrap .datatable-icon-right {
+	color: var(--bs-secondary);
+	text-decoration: none;
+	&::after { content: "\23F5"; }
+}
+
+.ngx-datatable.bootstrap .datatable-icon-down {
+	color: var(--bs-secondary);
+	text-decoration: none;
+	&::after { content: "\23F7"; }
+}
+
+.ngx-datatable.bootstrap .datatable-body-cell-label {
+  font-size: 1rem;
+}
+
+.ngx-datatable.bootstrap .datatable-body-row {
+  height: auto;
+}
+
+.ngx-datatable.bootstrap .datatable-body-cell {
+  height: auto;
+}
+
+.ngx-datatable.bootstrap datatable-progress {
+  position: fixed;
+  width: 100%;
+  z-index: 1;
+}
+
+.ngx-datatable.bootstrap .datatable-body .progress-linear .container {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 5px;
+  -webkit-transform: translate(0, 0) scale(1, 1);
+  transform: translate(0, 0) scale(1, 1);
+  background-color: #aad1f9;
+  max-width: unset;
+}
+
+.ngx-datatable.bootstrap .datatable-body .progress-linear .container .bar {
+  transition: all 0.2s linear;
+  -webkit-animation: query 0.8s infinite cubic-bezier(0.39, 0.575, 0.565, 1);
+  animation: query 0.8s infinite cubic-bezier(0.39, 0.575, 0.565, 1);
+  transition: -webkit-transform 0.2s linear;
+  transition: transform 0.2s linear;
+  background-color: #106cc8;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  height: 5px;
+}
+
+@keyframes query {
+  0% {
+    opacity: 1;
+    transform: translateX(35%) scale(0.3, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0, 1);
+  }
+}

@@ -3272,6 +3272,7 @@ export type GroupMeetingsStatistics = {
 };
 
 export type GroupMember = {
+    id: number;
     comment?: string | null;
     fields?: {
         [key: string]: unknown;
