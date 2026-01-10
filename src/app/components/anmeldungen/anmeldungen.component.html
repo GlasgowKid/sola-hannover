@@ -1,0 +1,27 @@
+<ng-container *ngIf="solawochen$ | async; let solawochenMap">
+    <ng-container *ngFor="let entry of solawochenMap | keyvalue">
+        <h1 >{{ entry.key.name }}</h1>
+        <ul>
+            <li *ngFor="let solawoche of entry.value">{{ solawoche.name }}</li>
+        </ul>
+    </ng-container>
+</ng-container>
+
+
+<div>--------------------------------------------------------------------------------------------------------------------------------</div>
+
+<!-- <div class="member-list">
+  <div *ngFor="let groupMember of (groupMembers$ | async)" class="member-item">
+    <h3>{{ groupMember.person.title}}</h3>
+    <h3>{{ groupMember.personFields?.sexId}}</h3>
+    
+    <ul>
+      <li>Age: {{ getAge(groupMember.personFields?.birthday) }}</li>
+      
+      <li>Stammeszugehörigkeit: {{ getExtraField(groupMember, 'Stammeszugehörigkeit') }}</li>
+      <li>Wunsch 1: {{ getExtraField(groupMember, 'Wunsch 1') }}</li>
+      <li>Wunsch 2: {{ getExtraField(groupMember, 'Wunsch 2') }}</li>
+    </ul>
+    <hr>
+  </div>
+</div> -->
