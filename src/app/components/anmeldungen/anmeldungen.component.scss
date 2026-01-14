@@ -14,3 +14,13 @@ dd {
   margin: 0;
   grid-column: 2;
 }
+
+td,
+th {
+  border: 1px solid black;
+  padding: 0.5rem;
+  text-align: right;
+  &:first-child {
+    text-align: left;
+  }
+}

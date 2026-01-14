@@ -9,35 +9,18 @@
   font-weight: bold;
 }
 
-.ngx-datatable.bootstrap .datatable-header-cell.sort-active {
-	display: flex;
-	justify-content: space-between;
-	&.sort-asc::after {
-		font-size: small;
-		color: var(--bs-secondary);
-		content: "\25B2";
-	}
-	&.sort-desc::after {
-		font-size: small;
-		color: var(--bs-secondary);
-		content: "\25BC";
-	}
-}
-
 .ngx-datatable.bootstrap .datatable-row-detail {
   height: auto !important;
 }
 
 .ngx-datatable.bootstrap .datatable-icon-right {
-	color: var(--bs-secondary);
-	text-decoration: none;
-	&::after { content: "\23F5"; }
+  color: var(--bs-secondary);
+  text-decoration: none;
 }
 
 .ngx-datatable.bootstrap .datatable-icon-down {
-	color: var(--bs-secondary);
-	text-decoration: none;
-	&::after { content: "\23F7"; }
+  color: var(--bs-secondary);
+  text-decoration: none;
 }
 
 .ngx-datatable.bootstrap .datatable-body-cell-label {

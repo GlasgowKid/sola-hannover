@@ -33,12 +33,56 @@
   >
     <ngx-datatable-row-detail #myDetailRow [rowHeight]="100">
       <ng-template let-row="row" ngx-datatable-row-detail-template>
-        <dl *ngIf="row.fields.length">
-          <ng-container *ngFor="let field of row.fields">
-            <dt>{{ field.name }}</dt>
-            <dd>{{ field.value }}</dd>
-          </ng-container>
-        </dl>
+        <div class="d-flex justify-content-around align-items-center">
+          <dl *ngIf="row.fields.length">
+            <ng-container *ngFor="let field of row.fields">
+              <dt>{{ field.name }}</dt>
+              <dd>{{ field.value }}</dd>
+            </ng-container>
+          </dl>
+          <table *ngIf="getFamilienpreis(row); let familienpreis">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Anzahl</th>
+                <th>Einzel</th>
+                <th>Summe</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="2">Kinder bis 4 Jahre</td>
+                <td colspan="2">frei</td>
+              </tr>
+              <tr>
+                <td>Kinder 5 - 12</td>
+                <td>{{ familienpreis.personenAnzahl5Bis12 }}</td>
+                <td>80,- €</td>
+                <td>{{ familienpreis.personenAnzahl5Bis12 * 80 | currency : 'EUR' }}</td>
+              </tr>
+              <tr>
+                <td>Kinder und Erwachsene ab 13 Jahre</td>
+                <td>{{ familienpreis.personenAnzahlAb13 }}</td>
+                <td>120,- €</td>
+                <td>{{ familienpreis.personenAnzahlAb13 * 120 | currency : 'EUR' }}</td>
+              </tr>
+              <tr>
+                <td>Hunde</td>
+                <td>{{ familienpreis.anzahlHunde }}</td>
+                <td>20,- €</td>
+                <td>{{ familienpreis.anzahlHunde * 20 | currency : 'EUR' }}</td>
+              </tr>
+              <tr>
+                <td colspan="3">Platzgebühr je Familie</td>
+                <td>{{ 80 | currency : 'EUR' }}</td>
+              </tr>
+              <tr>
+                <th colspan="3">Gesamt</th>
+                <th>{{ familienpreis.gesamt | currency : 'EUR' }}</th>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </ng-template>
     </ngx-datatable-row-detail>
 
@@ -80,5 +124,6 @@
         >{{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}</ng-template
       >
     </ngx-datatable-column>
+    <ngx-datatable-column prop="groupMemberStatus" name="Status"></ngx-datatable-column>
   </ngx-datatable>
 </div>

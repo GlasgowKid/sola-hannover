@@ -1,6 +1,6 @@
 {
   "name": "sola-hannover",
-  "version": "0.0.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "ng": "ng",
@@ -34,6 +34,7 @@
     "@churchtools/churchtools-client": "^1.4.2",
     "@siemens/ngx-datatable": "^25.0.0",
     "bootstrap": "^5.3.8",
+    "date-fns": "^4.1.0",
     "ngx-bootstrap": "^20.0.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

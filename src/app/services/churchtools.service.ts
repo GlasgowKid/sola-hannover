@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
-import { BehaviorSubject, forkJoin, from, map, mergeMap, Observable, of, ReplaySubject, switchMap, take } from 'rxjs';
+import { BehaviorSubject, from, map, Observable, of, ReplaySubject, switchMap, take } from 'rxjs';
 import { environment } from '../../environments/environment.development';
 import { DomainObjectGroup, Group, GroupMember, GroupType } from '../../utils/ct-types';
 

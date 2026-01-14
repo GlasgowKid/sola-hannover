@@ -3274,9 +3274,12 @@ export type GroupMeetingsStatistics = {
 export type GroupMember = {
     id: number;
     comment?: string | null;
-    fields?: {
-        [key: string]: unknown;
-    };
+    fields: Array<{
+        id: number;
+        name: string;
+        value: unknown;
+        sortKey: number;
+    }>;
     followUpDiffDays: number | null;
     followUpStep: number | null;
     followUpUnsuccessfulBackGroupId: number | null;
