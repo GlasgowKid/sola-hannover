@@ -145,9 +145,9 @@
       </ng-template>
     </ngx-datatable-column>
 
-    <ngx-datatable-column prop="preisInfo.gesamt" name="Preis">
+    <ngx-datatable-column prop="familienpreis.gesamt" name="Preis">
       <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
-        <span [class.text-danger]="row.preisInfo.invalid">
+        <span [class.text-danger]="row.familienpreis.invalid">
           {{ value | currency : 'EUR' }}
         </span>
       </ng-template>
