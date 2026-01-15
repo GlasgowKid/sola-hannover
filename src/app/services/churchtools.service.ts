@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
-import { BehaviorSubject, from, map, Observable, of, ReplaySubject, switchMap, take } from 'rxjs';
+import { BehaviorSubject, from, map, Observable, of, ReplaySubject, switchMap, take, throwError } from 'rxjs';
 import { environment } from '../../environments/environment.development';
 import { DomainObjectGroup, Group, GroupMember, GroupType } from '../../utils/ct-types';
 
@@ -63,6 +63,16 @@ export class ChurchtoolsService {
         (loggedIn) => loggedIn 
           ? from(churchtoolsClient.get<GroupMember[]>(`/groups/${groupId}/members`, params))
           : of([])
+      )
+    );
+  }
+
+  updateGroupMember(groupId: number, personId: number, value: Partial<GroupMember>): Observable<GroupMember> {
+    return this.loggedIn$.pipe(
+      switchMap(
+        (loggedIn) => loggedIn
+          ? from(churchtoolsClient.patch<GroupMember>(`/groups/${groupId}/members/${personId}`, value))
+          : throwError(() => new Error("Not logged in"))
       )
     );
   }
