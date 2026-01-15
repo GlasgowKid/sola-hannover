@@ -3,7 +3,7 @@ import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
-import { addYears, interval, isAfter, isValid, isWithinInterval, parseISO } from 'date-fns';
+import { addYears, interval, isAfter, isValid, isWithinInterval, parseISO, startOfYear } from 'date-fns';
 import { debounceTime, distinctUntilChanged, filter, switchMap, tap } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
@@ -13,6 +13,7 @@ interface Familienpreis {
   personenAnzahlAb13: number;
   anzahlHunde: number;
   invalid: boolean;
+  anzahlFamilienmitglieder: number;
   gesamt: number;
 }
 
@@ -33,6 +34,8 @@ export class AnmeldungenComponent {
 
   readonly $groupTypes = toSignal(this.churchToolsService.getGroupTypes());
   readonly $jahre = toSignal(this.churchToolsService.getJahre());
+
+  private readonly $selectedWeek = toSignal(this.formGroup.controls.selectedWeek.valueChanges);
 
   private readonly solawochen$ = this.formGroup.controls.selectedYear.valueChanges.pipe(
     distinctUntilChanged(),
@@ -61,8 +64,16 @@ export class AnmeldungenComponent {
     }));
   });
 
+  readonly $isFamiliensola = computed<boolean>(() => this.$anmeldungen().reduce((result, { familienpreis }) => result || familienpreis.anzahlFamilienmitglieder > 1, false));
+
+  private readonly $priceRefDate = computed<Date | null>(() => {
+    const solawoche = (this.$solawochen() || []).find(sola => sola.id === this.$selectedWeek());
+    return solawoche?.information.dateOfFoundation && parseISO(`${solawoche?.information.dateOfFoundation}`) || null;
+  })
+
   private calculateFamilienpreis(anmeldung: GroupMember): Familienpreis {
     let invalid = false;
+    let anzahlFamilienmitglieder = 1;
     const birthdates = new Array<Date>();
     if (anmeldung.personFields?.birthday) {
       const birthday = parseISO(`${anmeldung.personFields.birthday}`);
@@ -75,16 +86,17 @@ export class AnmeldungenComponent {
     for (let i = 2; i <= 8; i++) {
       const familienmitglied = anmeldung.fields.filter(({ name }) => name.endsWith(`Familienmitglied ${i}`));
       if (familienmitglied.length) {
-         const geburtstag = parseISO(`${familienmitglied.find(({ name }) => name.startsWith("Geburtstag"))?.value}`);
-         if (isValid(geburtstag)) birthdates.push(geburtstag);
-         else invalid = true;
+        anzahlFamilienmitglieder++;
+        const geburtstag = parseISO(`${familienmitglied.find(({ name }) => name.startsWith("Geburtstag"))?.value}`);
+        if (isValid(geburtstag)) birthdates.push(geburtstag);
+        else invalid = true;
       }
     }
 
     let personenAnzahl5Bis12 = 0;
     let personenAnzahlAb13 = 0;
-    
-    const REFERENCE_DATE = parseISO("2026-07-20");
+
+    const REFERENCE_DATE = this.$priceRefDate() ?? startOfYear(Date.now());
     const DATE_LIMIT_FULL = addYears(REFERENCE_DATE, -13);
     const DATE_LIMT_FREE = addYears(REFERENCE_DATE, -5);
     const REDUCED_PRICE_RANGE = interval(DATE_LIMT_FREE, DATE_LIMIT_FULL);
@@ -98,6 +110,6 @@ export class AnmeldungenComponent {
     if (isNaN(anzahlHunde)) invalid = true;
 
     const gesamt = (personenAnzahl5Bis12 * 80) + (personenAnzahlAb13 * 120) + (anzahlHunde * 20) + 80;
-    return { personenAnzahl5Bis12, personenAnzahlAb13, anzahlHunde, gesamt, invalid };
+    return { personenAnzahl5Bis12, personenAnzahlAb13, anzahlHunde, gesamt, anzahlFamilienmitglieder, invalid };
   }
 }

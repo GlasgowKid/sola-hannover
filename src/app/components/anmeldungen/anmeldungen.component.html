@@ -49,55 +49,56 @@
             }
           </dl>
           }
-
-          <table>
-            <thead>
-              <tr>
-                <th></th>
-                <th>Anzahl</th>
-                <th>Einzel</th>
-                <th>Summe</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colspan="2">Kinder bis 4 Jahre</td>
-                <td colspan="2">frei</td>
-              </tr>
-              <tr>
-                <td>Kinder 5 - 12</td>
-                <td>{{ row.familienpreis.personenAnzahl5Bis12 }}</td>
-                <td>80,- €</td>
-                <td>
-                  {{ row.familienpreis.personenAnzahl5Bis12 * 80 | currency : 'EUR' }}
-                </td>
-              </tr>
-              <tr>
-                <td>Kinder und Erwachsene ab 13 Jahre</td>
-                <td>{{ row.familienpreis.personenAnzahlAb13 }}</td>
-                <td>120,- €</td>
-                <td>
-                  {{ row.familienpreis.personenAnzahlAb13 * 120 | currency : 'EUR' }}
-                </td>
-              </tr>
-              <tr>
-                <td>Hunde</td>
-                <td>{{ row.familienpreis.anzahlHunde }}</td>
-                <td>20,- €</td>
-                <td>
-                  {{ row.familienpreis.anzahlHunde * 20 | currency : 'EUR' }}
-                </td>
-              </tr>
-              <tr>
-                <td colspan="3">Platzgebühr je Familie</td>
-                <td>{{ 80 | currency : 'EUR' }}</td>
-              </tr>
-              <tr>
-                <th colspan="3">Gesamt</th>
-                <th>{{ row.familienpreis.gesamt | currency : 'EUR' }}</th>
-              </tr>
-            </tbody>
-          </table>
+          @if ($isFamiliensola()) {
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Anzahl</th>
+                  <th>Einzel</th>
+                  <th>Summe</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="2">Kinder bis 4 Jahre</td>
+                  <td colspan="2">frei</td>
+                </tr>
+                <tr>
+                  <td>Kinder 5 - 12</td>
+                  <td>{{ row.familienpreis.personenAnzahl5Bis12 }}</td>
+                  <td>80,- €</td>
+                  <td>
+                    {{ row.familienpreis.personenAnzahl5Bis12 * 80 | currency : 'EUR' }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Kinder und Erwachsene ab 13 Jahre</td>
+                  <td>{{ row.familienpreis.personenAnzahlAb13 }}</td>
+                  <td>120,- €</td>
+                  <td>
+                    {{ row.familienpreis.personenAnzahlAb13 * 120 | currency : 'EUR' }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Hunde</td>
+                  <td>{{ row.familienpreis.anzahlHunde }}</td>
+                  <td>20,- €</td>
+                  <td>
+                    {{ row.familienpreis.anzahlHunde * 20 | currency : 'EUR' }}
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="3">Platzgebühr je Familie</td>
+                  <td>{{ 80 | currency : 'EUR' }}</td>
+                </tr>
+                <tr>
+                  <th colspan="3">Gesamt</th>
+                  <th>{{ row.familienpreis.gesamt | currency : 'EUR' }}</th>
+                </tr>
+              </tbody>
+            </table>
+          }
         </div>
       </ng-template>
     </ngx-datatable-row-detail>
@@ -145,13 +146,20 @@
       </ng-template>
     </ngx-datatable-column>
 
-    <ngx-datatable-column prop="familienpreis.gesamt" name="Preis">
-      <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
-        <span [class.text-danger]="row.familienpreis.invalid">
-          {{ value | currency : 'EUR' }}
-        </span>
-      </ng-template>
-    </ngx-datatable-column>
+     @if ($isFamiliensola()) {
+      <ngx-datatable-column prop="familienpreis.gesamt" name="Preis">
+        <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
+          <span [class.text-danger]="row.familienpreis.invalid">
+            {{ value | currency : 'EUR' }}
+          </span>
+        </ng-template>
+      </ngx-datatable-column>
+
+      <ngx-datatable-column
+        prop="familienpreis.anzahlFamilienmitglieder"
+        name="Personen"
+      ></ngx-datatable-column>
+    }
 
     <ngx-datatable-column prop="groupMemberStatus" name="Status"></ngx-datatable-column>
   </ngx-datatable>
