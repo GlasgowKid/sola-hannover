@@ -1,4 +1,4 @@
-<div class="container mt-5">
+<div class="container d-flex flex-column mt-5">
   <div [formGroup]="formGroup" class="input-group mb-3">
     @if ($jahre(); as jahre) {
       <select
@@ -28,139 +28,148 @@
     }
   </div>
 
-  <ngx-datatable
-    #datatable
-    [rows]="$anmeldungen()"
-    [messages]="{ emptyMessage: 'Keine Daten', totalMessage: 'insgesamt' }"
-    [headerHeight]="50"
-    [rowHeight]="50"
-    [footerHeight]="50"
-    columnMode="force"
-    class="bootstrap"
-  >
-    <ngx-datatable-row-detail #myDetailRow [rowHeight]="100">
-      <ng-template let-row="row" ngx-datatable-row-detail-template>
-        <div class="d-flex justify-content-between align-items-center p-5">
-          @if (row.fields.length) {
-          <dl>
-            @for (field of row.fields; track field.name) {
-            <dt>{{ field.name }}</dt>
-            <dd>{{ field.value }}</dd>
-            }
-          </dl>
-          }
-          @if ($isFamiliensola()) {
-            <table>
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Anzahl</th>
-                  <th>Einzel</th>
-                  <th>Summe</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colspan="2">Kinder bis 4 Jahre</td>
-                  <td colspan="2">frei</td>
-                </tr>
-                <tr>
-                  <td>Kinder 5 - 12</td>
-                  <td>{{ row.familienpreis.personenAnzahl5Bis12 }}</td>
-                  <td>80,- €</td>
-                  <td>
-                    {{ row.familienpreis.personenAnzahl5Bis12 * 80 | currency : 'EUR' }}
-                  </td>
-                </tr>
-                <tr>
-                  <td>Kinder und Erwachsene ab 13 Jahre</td>
-                  <td>{{ row.familienpreis.personenAnzahlAb13 }}</td>
-                  <td>120,- €</td>
-                  <td>
-                    {{ row.familienpreis.personenAnzahlAb13 * 120 | currency : 'EUR' }}
-                  </td>
-                </tr>
-                <tr>
-                  <td>Hunde</td>
-                  <td>{{ row.familienpreis.anzahlHunde }}</td>
-                  <td>20,- €</td>
-                  <td>
-                    {{ row.familienpreis.anzahlHunde * 20 | currency : 'EUR' }}
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan="3">Platzgebühr je Familie</td>
-                  <td>{{ 80 | currency : 'EUR' }}</td>
-                </tr>
-                <tr>
-                  <th colspan="3">Gesamt</th>
-                  <th>{{ row.familienpreis.gesamt | currency : 'EUR' }}</th>
-                </tr>
-              </tbody>
-            </table>
-          }
-        </div>
-      </ng-template>
-    </ngx-datatable-row-detail>
-
-    <ngx-datatable-column
-      [width]="50"
-      [resizeable]="false"
-      [sortable]="false"
-      [draggable]="false"
-      [canAutoResize]="false"
+  @if($anmeldungen(); as anmeldungen) {
+    <ngx-datatable
+      #datatable
+      [rows]="anmeldungen"
+      [messages]="{ emptyMessage: 'Keine Daten', totalMessage: 'insgesamt' }"
+      [headerHeight]="50"
+      [rowHeight]="50"
+      [footerHeight]="50"
+      columnMode="force"
+      class="bootstrap"
     >
-      <ng-template let-row="row" let-expanded="expanded" ngx-datatable-cell-template>
-        @if (row.fields.length) {
-          <a
-            href="javascript:void(0)"
-            title="Expand/Collapse Row"
-            [class.datatable-icon-right]="!expanded"
-            [class.datatable-icon-down]="expanded"
-            (click)="datatable.rowDetail?.toggleExpandRow(row)"
-          >
-          </a>
-        }
-      </ng-template>
-    </ngx-datatable-column>
+      <ngx-datatable-row-detail #myDetailRow [rowHeight]="100">
+        <ng-template let-row="row" ngx-datatable-row-detail-template>
+          <div class="d-flex justify-content-between align-items-center p-5">
+            @if (row.fields.length) {
+            <dl>
+              @for (field of row.fields; track field.name) {
+              <dt>{{ field.name }}</dt>
+              <dd>{{ field.value }}</dd>
+              }
+            </dl>
+            }
+            @if ($isFamiliensola()) {
+              <table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Anzahl</th>
+                    <th>Einzel</th>
+                    <th>Summe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="2">Kinder bis 4 Jahre</td>
+                    <td colspan="2">frei</td>
+                  </tr>
+                  <tr>
+                    <td>Kinder 5 - 12</td>
+                    <td>{{ row.familienpreis.personenAnzahl5Bis12 }}</td>
+                    <td>80,- €</td>
+                    <td>
+                      {{ row.familienpreis.personenAnzahl5Bis12 * 80 | currency : 'EUR' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Kinder und Erwachsene ab 13 Jahre</td>
+                    <td>{{ row.familienpreis.personenAnzahlAb13 }}</td>
+                    <td>120,- €</td>
+                    <td>
+                      {{ row.familienpreis.personenAnzahlAb13 * 120 | currency : 'EUR' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Hunde</td>
+                    <td>{{ row.familienpreis.anzahlHunde }}</td>
+                    <td>20,- €</td>
+                    <td>
+                      {{ row.familienpreis.anzahlHunde * 20 | currency : 'EUR' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="3">Platzgebühr je Familie</td>
+                    <td>{{ 80 | currency : 'EUR' }}</td>
+                  </tr>
+                  <tr>
+                    <th colspan="3">Gesamt</th>
+                    <th>{{ row.familienpreis.gesamt | currency : 'EUR' }}</th>
+                  </tr>
+                </tbody>
+              </table>
+            }
+          </div>
+        </ng-template>
+      </ngx-datatable-row-detail>
 
-    <ngx-datatable-column
-      prop="person.domainAttributes.firstName"
-      name="Vorname"
-    ></ngx-datatable-column>
-
-    <ngx-datatable-column
-      prop="person.domainAttributes.lastName"
-      name="Nachname"
-    ></ngx-datatable-column>
-
-    <ngx-datatable-column prop="personFields.birthday" name="Geburtstag">
-      <ng-template ngx-datatable-cell-template let-value="value">
-        {{ value | date : 'dd.MM.yyyy' }}
-      </ng-template>
-    </ngx-datatable-column>
-
-    <ngx-datatable-column prop="personFields.sexId" name="m/w">
-      <ng-template ngx-datatable-cell-template let-value="value">
-        {{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}
-      </ng-template>
-    </ngx-datatable-column>
-
-     @if ($isFamiliensola()) {
-      <ngx-datatable-column prop="familienpreis.gesamt" name="Preis">
-        <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
-          <span [class.text-danger]="row.familienpreis.invalid">
-            {{ value | currency : 'EUR' }}
-          </span>
+      <ngx-datatable-column
+        [width]="50"
+        [resizeable]="false"
+        [sortable]="false"
+        [draggable]="false"
+        [canAutoResize]="false"
+      >
+        <ng-template let-row="row" let-expanded="expanded" ngx-datatable-cell-template>
+          @if (row.fields.length) {
+            <a
+              href="javascript:void(0)"
+              title="Expand/Collapse Row"
+              [class.datatable-icon-right]="!expanded"
+              [class.datatable-icon-down]="expanded"
+              (click)="datatable.rowDetail?.toggleExpandRow(row)"
+            >
+            </a>
+          }
         </ng-template>
       </ngx-datatable-column>
 
       <ngx-datatable-column
-        prop="familienpreis.anzahlFamilienmitglieder"
-        name="Personen"
+        prop="person.domainAttributes.firstName"
+        name="Vorname"
       ></ngx-datatable-column>
-    }
 
-    <ngx-datatable-column prop="groupMemberStatus" name="Status"></ngx-datatable-column>
-  </ngx-datatable>
+      <ngx-datatable-column
+        prop="person.domainAttributes.lastName"
+        name="Nachname"
+      ></ngx-datatable-column>
+
+      <ngx-datatable-column prop="personFields.birthday" name="Geburtstag">
+        <ng-template ngx-datatable-cell-template let-value="value">
+          {{ value | date : 'dd.MM.yyyy' }}
+        </ng-template>
+      </ngx-datatable-column>
+
+      <ngx-datatable-column prop="personFields.sexId" name="m/w">
+        <ng-template ngx-datatable-cell-template let-value="value">
+          {{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}
+        </ng-template>
+      </ngx-datatable-column>
+
+      @if ($isFamiliensola()) {
+        <ngx-datatable-column prop="familienpreis.gesamt" name="Preis">
+          <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
+            <span [class.text-danger]="row.familienpreis.invalid">
+              {{ value | currency : 'EUR' }}
+            </span>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <ngx-datatable-column
+          prop="familienpreis.anzahlFamilienmitglieder"
+          name="Personen"
+        ></ngx-datatable-column>
+      }
+
+      <ngx-datatable-column prop="groupMemberStatus" name="Status"></ngx-datatable-column>
+    </ngx-datatable>
+
+    @if (anmeldungen.length > 0) {
+      <button type="button" (click)="updateFamilienpreis()" [disabled]="$progress() > 0" class="btn btn-primary align-self-end">
+        Familienpreis übertragen
+        @if ($progress() > 0) { ({{ $progress() | percent }}) }
+      </button>
+    }
+  }
 </div>

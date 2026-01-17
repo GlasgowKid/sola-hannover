@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { BehaviorSubject, from, map, Observable, of, ReplaySubject, switchMap, take, throwError } from 'rxjs';
 import { environment } from '../../environments/environment.development';
-import { DomainObjectGroup, Group, GroupMember, GroupType } from '../../utils/ct-types';
+import { DomainObjectGroup, Group, GroupMember, GroupMemberField, GroupMemberFieldGroup, GroupType } from '../../utils/ct-types';
 
 @Injectable({
   providedIn: 'root',
@@ -64,6 +64,17 @@ export class ChurchtoolsService {
           ? from(churchtoolsClient.get<GroupMember[]>(`/groups/${groupId}/members`, params))
           : of([])
       )
+    );
+  }
+
+  getGroupMemberFields(groupId: number): Observable<GroupMemberFieldGroup[]> {
+    return this.loggedIn$.pipe(
+      switchMap(
+        (loggedIn) => loggedIn 
+          ? from(churchtoolsClient.get<GroupMemberField[]>(`/groups/${groupId}/memberfields`))
+          : of([])
+      ),
+      map((memberfields) => memberfields.filter(({ type }) => type === "group").map(({ field }) => field as GroupMemberFieldGroup)),
     );
   }
 
