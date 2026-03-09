@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { BehaviorSubject, from, map, Observable, of, ReplaySubject, switchMap, take, throwError } from 'rxjs';
-import { environment } from '../../environments/environment.development';
+import { environment } from '../../environments/environment';
 import { DomainObjectGroup, Group, GroupMember, GroupMemberField, GroupMemberFieldGroup, GroupType } from '../../utils/ct-types';
 
 @Injectable({
@@ -18,10 +18,15 @@ export class ChurchtoolsService {
     const username = environment.ctUsername;
     const password = environment.ctPassword;
 
-    churchtoolsClient.post('/login', { username, password }).then(() => {
+    if (environment.production) {
       this.loggedIn$.next(true);
       churchtoolsClient.get<GroupType[]>(`/group/grouptypes`).then(groupTypes => this.groupTypes$.next(groupTypes));
-    });
+    } else {
+      churchtoolsClient.post('/login', { username, password }).then(() => {
+        this.loggedIn$.next(true);
+        churchtoolsClient.get<GroupType[]>(`/group/grouptypes`).then(groupTypes => this.groupTypes$.next(groupTypes));
+      });
+    }
   }
 
   getGroupTypes(): Observable<GroupType[]> {
@@ -60,7 +65,7 @@ export class ChurchtoolsService {
     const params = { personFields: ["birthday", "sexId"], limit: 200 };
     return this.loggedIn$.pipe(
       switchMap(
-        (loggedIn) => loggedIn 
+        (loggedIn) => loggedIn
           ? from(churchtoolsClient.get<GroupMember[]>(`/groups/${groupId}/members`, params))
           : of([])
       )
@@ -70,7 +75,7 @@ export class ChurchtoolsService {
   getGroupMemberFields(groupId: number): Observable<GroupMemberFieldGroup[]> {
     return this.loggedIn$.pipe(
       switchMap(
-        (loggedIn) => loggedIn 
+        (loggedIn) => loggedIn
           ? from(churchtoolsClient.get<GroupMemberField[]>(`/groups/${groupId}/memberfields`))
           : of([])
       ),
