@@ -36,6 +36,11 @@
       [headerHeight]="50"
       [rowHeight]="50"
       [footerHeight]="50"
+      [sorts]="[
+        { dir: 'asc', prop: 'person.domainAttributes.lastName' },
+        { dir: 'asc', prop: 'person.domainAttributes.firstName' },
+        ]"
+      [limit]="10"
       columnMode="force"
       class="bootstrap"
     >
@@ -124,15 +129,15 @@
           }
         </ng-template>
       </ngx-datatable-column>
+      
+      <ngx-datatable-column
+        prop="person.domainAttributes.lastName"
+        name="Nachname"
+      ></ngx-datatable-column>
 
       <ngx-datatable-column
         prop="person.domainAttributes.firstName"
         name="Vorname"
-      ></ngx-datatable-column>
-
-      <ngx-datatable-column
-        prop="person.domainAttributes.lastName"
-        name="Nachname"
       ></ngx-datatable-column>
 
       <ngx-datatable-column prop="personFields.birthday" name="Geburtstag">
@@ -165,7 +170,7 @@
       <ngx-datatable-column prop="groupMemberStatus" name="Status"></ngx-datatable-column>
     </ngx-datatable>
 
-    @if (anmeldungen.length > 0) {
+    @if ($isFamiliensola() && anmeldungen.length > 0) {
       <button type="button" (click)="updateFamilienpreis()" [disabled]="$progress() > 0" class="btn btn-primary align-self-end">
         Familienpreis übertragen
         @if ($progress() > 0) { ({{ $progress() | percent }}) }

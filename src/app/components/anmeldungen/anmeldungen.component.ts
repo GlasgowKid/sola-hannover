@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe, PercentPipe } from '@angular/common';
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
@@ -31,7 +31,6 @@ type AnmeldungenViewModel = GroupMember & { familienpreis: Familienpreis };
 export class AnmeldungenComponent {
   private readonly churchToolsService = inject(ChurchtoolsService);
   private readonly fb = inject(FormBuilder);
-  private readonly destroyRef = inject(DestroyRef);
 
   readonly formGroup = this.fb.group({
     selectedYear: this.fb.control<number | null>(null),
