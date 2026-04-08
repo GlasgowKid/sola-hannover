@@ -1,32 +1,11 @@
 <div class="container d-flex flex-column mt-5">
-  <div [formGroup]="formGroup" class="input-group mb-3">
-    @if ($jahre(); as jahre) {
-      <select
-        formControlName="selectedYear"
-        class="form-select"
-        [class.text-secondary]="!formGroup.value.selectedYear"
-      >
-        <option [ngValue]="null" selected disabled>Jahr</option>
-        @for (jahr of jahre; track jahr.id) {
-          <option [ngValue]="jahr.id">{{ jahr.name }}</option>
-        }
-      </select>
-    }
-    @if ($solawochen(); as solawochen) {
-      <select
-        formControlName="selectedWeek"
-        class="form-select"
-        [class.text-secondary]="!formGroup.value.selectedWeek"
-      >
-        <option [ngValue]="null" selected disabled>Solawoche</option>
-        @for (solawoche of solawochen; track solawoche.id) {
-          <option [ngValue]="solawoche.id">
-            {{ solawoche.name }}
-          </option>
-        }
-      </select>
-    }
-  </div>
+
+  <app-sola-selector
+    [jahre]="$jahre()"
+    [solawochen]="$solawochen()"
+    (yearSelected)="onYearSelected($event)"
+    (weekSelected)="onWeekSelected($event)"
+  ></app-sola-selector>
 
   @if($anmeldungen(); as anmeldungen) {
     <ngx-datatable

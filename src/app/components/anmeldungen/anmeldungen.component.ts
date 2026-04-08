@@ -1,13 +1,13 @@
 import { CurrencyPipe, DatePipe, PercentPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
 import { addYears, interval, isAfter, isValid, isWithinInterval, parseISO, startOfYear } from 'date-fns';
-import { debounceTime, distinctUntilChanged, filter, firstValueFrom, map, switchMap, tap } from 'rxjs';
+import { distinctUntilChanged, firstValueFrom, Subject, switchMap } from 'rxjs';
 import { MemberStatus } from '../../../utils/ct-enums';
 import { GroupMember, GroupMemberFieldGroup } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
+import { SolaSelectorComponent } from '../sola-selector/sola-selector.component';
 
 const PRICES = { CHILD: 80, ADULT: 120, DOG: 20, BASE: 80 };
 
@@ -24,37 +24,36 @@ type AnmeldungenViewModel = GroupMember & { familienpreis: Familienpreis };
 
 @Component({
   selector: 'app-anmeldungen',
-  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, NgxDatatableModule, PercentPipe],
+  standalone: true,
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    NgxDatatableModule,
+    PercentPipe,
+    SolaSelectorComponent,
+  ],
   templateUrl: './anmeldungen.component.html',
   styleUrl: './anmeldungen.component.scss',
 })
 export class AnmeldungenComponent {
   private readonly churchToolsService = inject(ChurchtoolsService);
-  private readonly fb = inject(FormBuilder);
-
-  readonly formGroup = this.fb.group({
-    selectedYear: this.fb.control<number | null>(null),
-    selectedWeek: this.fb.control<number | null>(null),
-  });
 
   readonly $groupTypes = toSignal(this.churchToolsService.getGroupTypes());
   readonly $jahre = toSignal(this.churchToolsService.getJahre());
 
-  private readonly $selectedWeek = toSignal(this.formGroup.controls.selectedWeek.valueChanges);
+  readonly $selectedWeek = signal<number | null>(null);
 
-  private readonly solawochen$ = this.formGroup.controls.selectedYear.valueChanges.pipe(
+  private readonly yearSelectedSubject = new Subject<number>();
+  private readonly weekSelectedSubject = new Subject<number>();
+
+  private readonly solawochen$ = this.yearSelectedSubject.pipe(
     distinctUntilChanged(),
-    debounceTime(1000),
-    tap(() => this.formGroup.controls.selectedWeek.reset()),
-    filter((value): value is number => !!value),
-    switchMap(groupId => this.churchToolsService.getSolawochen(groupId)),
+    switchMap((groupId) => this.churchToolsService.getSolawochen(groupId)),
   );
 
-  private readonly anmeldungen$ = this.formGroup.controls.selectedWeek.valueChanges.pipe(
+  private readonly anmeldungen$ = this.weekSelectedSubject.pipe(
     distinctUntilChanged(),
-    debounceTime(1000),
-    filter((value): value is number => !!value),
-    switchMap(groupId => this.churchToolsService.getAnmeldungen(groupId)),
+    switchMap((groupId) => this.churchToolsService.getAnmeldungen(groupId)),
   );
 
   readonly $anmeldungen = signal<AnmeldungenViewModel[]>([]);
@@ -63,21 +62,31 @@ export class AnmeldungenComponent {
   readonly $solawochen = toSignal(this.solawochen$);
 
   private readonly $priceRefDate = computed<Date>(() => {
-    const solawoche = this.$solawochen()?.find(s => s.id === this.$selectedWeek());
+    const solawoche = this.$solawochen()?.find((s) => s.id === this.$selectedWeek());
     const dateStr = solawoche?.information?.dateOfFoundation;
     return dateStr ? parseISO(String(dateStr)) : startOfYear(new Date());
   });
 
   readonly $isFamiliensola = computed(() =>
-    this.$anmeldungen().some(a => a.familienpreis.anzahlFamilienmitglieder > 1)
+    this.$anmeldungen().some((a) => a.familienpreis.anzahlFamilienmitglieder > 1)
   );
 
   constructor() {
-    this.anmeldungen$.pipe(takeUntilDestroyed()).subscribe(data => {
-      const viewModels = data.map(m => ({ ...m, familienpreis: this.calculateFamilienpreis(m) }));
+    this.anmeldungen$.pipe(takeUntilDestroyed()).subscribe((data) => {
+      const viewModels = data.map((m) => ({ ...m, familienpreis: this.calculateFamilienpreis(m) }));
       this.$anmeldungen.set(viewModels);
       this.$errorIds.set([]);
     });
+  }
+
+  onYearSelected(yearId: number) {
+    this.$anmeldungen.set([]);
+    this.yearSelectedSubject.next(yearId);
+  }
+
+  onWeekSelected(weekId: number) {
+    this.$selectedWeek.set(weekId);
+    this.weekSelectedSubject.next(weekId);
   }
 
   private calculateFamilienpreis(anmeldung: GroupMember): Familienpreis {
@@ -135,7 +144,7 @@ export class AnmeldungenComponent {
   }
 
   async updateFamilienpreis() {
-    const groupId = this.formGroup.value.selectedWeek;
+    const groupId = this.$selectedWeek();
     if (!groupId || this.$progress() > 0) return;
 
     try {
