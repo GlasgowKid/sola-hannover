@@ -26,15 +26,16 @@
         <ngx-datatable-row-detail #myDetailRow [rowHeight]="100">
           <ng-template let-row="row" ngx-datatable-row-detail-template>
             <div class="d-flex justify-content-between align-items-center p-5">
-              @if (row.fields.length) {
+              @if (row.displayFields.length) {
                 <dl>
-                  @for (field of row.fields; track field.name) {
+                  @for (field of row.displayFields; track field.name) {
                     <dt>{{ field.name }}</dt>
                     <dd>{{ field.value }}</dd>
                   }
                 </dl>
               }
 
+              <ng-container *ngTemplateOutlet="sofa.familienmitgliederTabelle; context: { mitglieder: row.familienpreis?.weitereMitglieder }"> </ng-container>
               <ng-container *ngTemplateOutlet="sofa.preisTabelle; context: { row }"> </ng-container>
             </div>
           </ng-template>

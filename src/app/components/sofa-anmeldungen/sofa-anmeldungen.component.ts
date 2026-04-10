@@ -1,4 +1,4 @@
-import { CurrencyPipe, PercentPipe } from '@angular/common';
+import { CurrencyPipe, PercentPipe, DatePipe } from '@angular/common';
 import { Component, OnChanges, TemplateRef, ViewChild, inject, input, output, signal } from '@angular/core';
 import { addYears, interval, isAfter, isValid, isWithinInterval, parseISO } from 'date-fns';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +8,12 @@ import { ChurchtoolsService } from '../../services/churchtools.service';
 
 const PRICES = { CHILD: 80, ADULT: 120, DOG: 20, BASE: 80 };
 
+export interface WeiteresFamilienmitglied {
+  vorname: string;
+  nachname: string;
+  geburtstag: Date | null;
+}
+
 export interface Familienpreis {
   personenAnzahl5Bis12: number;
   personenAnzahlAb13: number;
@@ -15,14 +21,18 @@ export interface Familienpreis {
   invalid: boolean;
   anzahlFamilienmitglieder: number;
   gesamt: number;
+  weitereMitglieder: WeiteresFamilienmitglied[];
 }
 
-export type SofaAnmeldungViewModel = GroupMember & { familienpreis: Familienpreis };
+export type SofaAnmeldungViewModel = GroupMember & { 
+  familienpreis: Familienpreis;
+  displayFields: Array<{ id: number; name: string; value: unknown; sortKey: number; }>;
+};
 
 @Component({
   selector: 'app-sofa-anmeldungen',
   standalone: true,
-  imports: [CurrencyPipe, PercentPipe],
+  imports: [CurrencyPipe, DatePipe, PercentPipe],
   templateUrl: './sofa-anmeldungen.component.html',
   styleUrl: './sofa-anmeldungen.component.scss',
 })
@@ -30,6 +40,7 @@ export class SofaAnmeldungenComponent implements OnChanges {
   @ViewChild('preisTabelle') preisTabelle?: TemplateRef<{ row: SofaAnmeldungViewModel }>;
   @ViewChild('preisSpalte') preisSpalte?: TemplateRef<{ value: number, row: SofaAnmeldungViewModel }>;
   @ViewChild('personenSpalte') personenSpalte?: TemplateRef<{ row: SofaAnmeldungViewModel }>;
+  @ViewChild('familienmitgliederTabelle') familienmitgliederTabelle?: TemplateRef<{ mitglieder: WeiteresFamilienmitglied[] }>;
 
   readonly anmeldungen = input.required<GroupMember[]>();
   readonly priceRefDate = input.required<Date>();
@@ -56,6 +67,7 @@ export class SofaAnmeldungenComponent implements OnChanges {
     const processed: SofaAnmeldungViewModel[] = raw.map(m => ({
       ...m,
       familienpreis: this.calculateFamilienpreis(m),
+      displayFields: m.fields.filter(f => !f.name.includes('Familienmitglied')),
     }));
 
     const isFamiliensola = processed.some(a => a.familienpreis.anzahlFamilienmitglieder > 1);
@@ -68,14 +80,19 @@ export class SofaAnmeldungenComponent implements OnChanges {
   private calculateFamilienpreis(anmeldung: GroupMember): Familienpreis {
     const birthdates: Date[] = [];
     let invalid = false;
+    const weitereMitglieder: WeiteresFamilienmitglied[] = []; // <-- Array initialisieren
 
-    const addDate = (val: unknown) => {
+    const parseDate = (val: unknown): Date | null => {
       const d = parseISO(String(val));
-      if (isValid(d)) birthdates.push(d);
+      if (isValid(d)) return d;
       else invalid = true;
+      return null;
     };
 
-    if (anmeldung.personFields?.birthday) addDate(anmeldung.personFields.birthday);
+    if (anmeldung.personFields?.birthday) {
+      const d = parseDate(anmeldung.personFields.birthday);
+      if (d) birthdates.push(d);
+    }
     else invalid = true;
 
     let anzahlFamilienmitglieder = 1;
@@ -83,9 +100,20 @@ export class SofaAnmeldungenComponent implements OnChanges {
       const familienmitglied = anmeldung.fields.filter(({ name, value }) => name.endsWith(`Familienmitglied ${i}`) && !!value);
       if (familienmitglied.length) {
         anzahlFamilienmitglieder++;
+        
         const geburtstagFeld = familienmitglied.find(f => f.name.startsWith("Geburtstag"));
-        if (geburtstagFeld?.value) addDate(geburtstagFeld?.value);
+        const vornameFeld = familienmitglied.find(f => f.name.startsWith("Vorname"));
+        const nachnameFeld = familienmitglied.find(f => f.name.startsWith("Nachname"));
+
+        const geburtstag = geburtstagFeld?.value ? parseDate(geburtstagFeld?.value) : null;
+        if (geburtstag) birthdates.push(geburtstag);
         else invalid = true;
+
+        weitereMitglieder.push({
+          vorname: vornameFeld?.value ? String(vornameFeld.value) : '',
+          nachname: nachnameFeld?.value ? String(nachnameFeld.value) : '',
+          geburtstag,
+        });
       }
     }
 
@@ -105,7 +133,16 @@ export class SofaAnmeldungenComponent implements OnChanges {
     if (isNaN(anzahlHunde)) invalid = true;
 
     const gesamt = (personenAnzahl5Bis12 * PRICES.CHILD) + (personenAnzahlAb13 * PRICES.ADULT) + (anzahlHunde * PRICES.DOG) + PRICES.BASE;
-    return { personenAnzahl5Bis12, personenAnzahlAb13, anzahlHunde, gesamt, anzahlFamilienmitglieder, invalid };
+
+    return { 
+      personenAnzahl5Bis12, 
+      personenAnzahlAb13, 
+      anzahlHunde, 
+      gesamt, 
+      anzahlFamilienmitglieder, 
+      invalid, 
+      weitereMitglieder,
+    };
   }
 
   private performSingleUpdate(groupId: number, anmeldung: SofaAnmeldungViewModel, fieldDef: GroupMemberFieldGroup): Promise<GroupMember> {
@@ -135,8 +172,8 @@ export class SofaAnmeldungenComponent implements OnChanges {
       for (const [index, anmeldung] of toUpdate.entries()) {
         try {
           const updatedMember = await this.performSingleUpdate(groupId, anmeldung, familienpreisField);
-          const { fields, personFields, familienpreis } = anmeldung;
-          const merged = { ...updatedMember, fields, personFields, familienpreis };
+          const { fields, personFields, familienpreis, displayFields } = anmeldung;
+          const merged = { ...updatedMember, fields, personFields, familienpreis, displayFields };
           this.$internalData.update(list => list.map(m => m.id === merged.id ? merged : m));
         } catch (err) {
           console.error(`Fehler ID ${anmeldung.id}`, err);

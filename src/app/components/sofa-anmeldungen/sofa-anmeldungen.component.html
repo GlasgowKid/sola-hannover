@@ -13,7 +13,7 @@
     </button>
   </div>
 
-  <ng-template #preisDetailTpl let-row="row">
+  <ng-template #preisTabelle let-row="row">
     @if (row.familienpreis) {
       <table class="mt-3">
         <thead>
@@ -60,13 +60,39 @@
     }
   </ng-template>
 
-  <ng-template #preisCellTpl let-value="value" let-row="row">
+  <ng-template #preisSpalte let-value="value" let-row="row">
     <span [class.text-danger]="row.familienpreis.invalid">
       {{ value | currency: 'EUR' }}
     </span>
   </ng-template>
 
-  <ng-template #personenCellTpl let-row="row">
+  <ng-template #personenSpalte let-row="row">
     {{ row.familienpreis.anzahlFamilienmitglieder }}
+  </ng-template>
+
+  <ng-template #familienmitgliederTabelle let-mitglieder="mitglieder">
+    @if (mitglieder && mitglieder.length > 0) {
+      <div class="mt-4">
+        <h6 class="mb-2">Familienmitglieder</h6>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Vorname</th>
+              <th>Nachname</th>
+              <th>Geburtstag</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of mitglieder; track $index) {
+              <tr>
+                <td>{{ m.vorname }}</td>
+                <td>{{ m.nachname }}</td>
+                <td>{{ m.geburtstag | date: 'dd.MM.yyyy' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   </ng-template>
 }
