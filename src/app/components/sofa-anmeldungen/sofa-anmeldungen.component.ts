@@ -22,14 +22,14 @@ export type SofaAnmeldungViewModel = GroupMember & { familienpreis: Familienprei
 @Component({
   selector: 'app-sofa-anmeldungen',
   standalone: true,
-  imports: [CurrencyPipe, PercentPipe], 
+  imports: [CurrencyPipe, PercentPipe],
   templateUrl: './sofa-anmeldungen.component.html',
   styleUrl: './sofa-anmeldungen.component.scss',
 })
 export class SofaAnmeldungenComponent implements OnChanges {
-  @ViewChild('preisDetailTpl') preisDetailTpl?: TemplateRef<{ row: SofaAnmeldungViewModel }>;
-  @ViewChild('preisCellTpl') preisCellTpl?: TemplateRef<{ value: number, row: SofaAnmeldungViewModel }>;
-  @ViewChild('personenCellTpl') personenCellTpl?: TemplateRef<{ row: SofaAnmeldungViewModel }>;
+  @ViewChild('preisTabelle') preisTabelle?: TemplateRef<{ row: SofaAnmeldungViewModel }>;
+  @ViewChild('preisSpalte') preisSpalte?: TemplateRef<{ value: number, row: SofaAnmeldungViewModel }>;
+  @ViewChild('personenSpalte') personenSpalte?: TemplateRef<{ row: SofaAnmeldungViewModel }>;
 
   readonly anmeldungen = input.required<GroupMember[]>();
   readonly priceRefDate = input.required<Date>();

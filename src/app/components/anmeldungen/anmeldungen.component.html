@@ -35,8 +35,7 @@
                 </dl>
               }
 
-              <ng-container *ngTemplateOutlet="sofaLogic.preisDetailTpl; context: { row }">
-              </ng-container>
+              <ng-container *ngTemplateOutlet="sofa.preisTabelle; context: { row }"> </ng-container>
             </div>
           </ng-template>
         </ngx-datatable-row-detail>
@@ -84,21 +83,21 @@
           </ng-template>
         </ngx-datatable-column>
 
-        @if (sofaLogic.preisCellTpl) {
+        @if (sofa.preisSpalte) {
           <ngx-datatable-column prop="familienpreis.gesamt" name="Preis">
             <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
               <ng-container
-                *ngTemplateOutlet="sofaLogic.preisCellTpl; context: { value, row }"
+                *ngTemplateOutlet="sofa.preisSpalte; context: { value, row }"
               ></ng-container>
             </ng-template>
           </ngx-datatable-column>
         }
 
-        @if (sofaLogic.personenCellTpl) {
+        @if (sofa.personenSpalte) {
           <ngx-datatable-column prop="familienpreis.anzahlFamilienmitglieder" name="Personen">
             <ng-template ngx-datatable-cell-template let-row="row">
               <ng-container
-                *ngTemplateOutlet="sofaLogic.personenCellTpl; context: { row }"
+                *ngTemplateOutlet="sofa.personenSpalte; context: { row }"
               ></ng-container>
             </ng-template>
           </ngx-datatable-column>
@@ -110,7 +109,7 @@
   }
 
   <app-sofa-anmeldungen
-    #sofaLogic
+    #sofa
     [anmeldungen]="$anmeldungen()"
     [priceRefDate]="$priceRefDate()"
     [groupId]="$selectedWeek()"

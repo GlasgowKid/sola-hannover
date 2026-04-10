@@ -43,13 +43,13 @@ export class AnmeldungenComponent {
 
   readonly $anmeldungen = signal<GroupMember[]>([]);
   readonly $solawochen = toSignal(this.solawochen$);
-  
+
   readonly $priceRefDate = computed<Date>(() => {
     const solawoche = this.$solawochen()?.find(s => s.id === this.$selectedWeek());
     const dateStr = solawoche?.information?.dateOfFoundation;
     return dateStr ? parseISO(String(dateStr)) : startOfYear(new Date());
   });
-  
+
   readonly $displayData = signal<SofaAnmeldungViewModel[]>([]);
 
   constructor() {
