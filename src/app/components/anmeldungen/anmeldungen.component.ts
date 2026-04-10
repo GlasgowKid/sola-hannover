@@ -9,6 +9,7 @@ import { MemberStatus } from '../../../utils/ct-enums';
 import { GroupMember, GroupMemberFieldGroup } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 
+
 const PRICES = { CHILD: 80, ADULT: 120, DOG: 20, BASE: 80 };
 
 interface Familienpreis {
@@ -33,15 +34,19 @@ type AnmeldungenViewModel = GroupMember & { familienpreis: Familienpreis };
 export class AnmeldungenComponent {
   private readonly churchToolsService = inject(ChurchtoolsService);
   private readonly fb = inject(FormBuilder);
-
-  view = signal<'admin' | 'participants'>('admin');
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly formGroup = this.fb.group({
     selectedYear: this.fb.control<number | null>(null),
     selectedWeek: this.fb.control<number | null>(null),
   });
+  
+  view = signal<'admin' | 'participants'>('admin');
 
+
+  readonly $groupTypes = toSignal(this.churchToolsService.getGroupTypes());
   readonly $jahre = toSignal(this.churchToolsService.getJahre());
+
   private readonly $selectedWeek = toSignal(this.formGroup.controls.selectedWeek.valueChanges);
 
   private readonly solawochen$ = this.formGroup.controls.selectedYear.valueChanges.pipe(
@@ -60,12 +65,15 @@ export class AnmeldungenComponent {
   );
 
   readonly $anmeldungen = signal<AnmeldungenViewModel[]>([]);
+  readonly $errorIds = signal<number[]>([]);
   readonly $progress = signal<number>(0);
   readonly $solawochen = toSignal(this.solawochen$);
 
-  toggleView() {
-    this.view.update(v => v === 'admin' ? 'participants' : 'admin');
-  }
+  private readonly $priceRefDate = computed<Date>(() => {
+    const solawoche = this.$solawochen()?.find(s => s.id === this.$selectedWeek());
+    const dateStr = solawoche?.information?.dateOfFoundation;
+    return dateStr ? parseISO(String(dateStr)) : startOfYear(new Date());
+  });
 
   readonly $isFamiliensola = computed(() =>
     this.$anmeldungen().some(a => a.familienpreis.anzahlFamilienmitglieder > 1)
@@ -75,11 +83,14 @@ export class AnmeldungenComponent {
     this.anmeldungen$.pipe(takeUntilDestroyed()).subscribe(data => {
       const viewModels = data.map(m => ({ ...m, familienpreis: this.calculateFamilienpreis(m) }));
       this.$anmeldungen.set(viewModels);
+      this.$errorIds.set([]);
     });
   }
 
+  toggleView() {
+    this.view.update(v => v === 'admin' ? 'participants' : 'admin');
+  }
 
-  // ... rest of your calculateFamilienpreis and update logic remains the same ...
   private calculateFamilienpreis(anmeldung: GroupMember): Familienpreis {
     const birthdates: Date[] = [];
     let invalid = false;
@@ -106,12 +117,7 @@ export class AnmeldungenComponent {
 
     let personenAnzahl5Bis12 = 0;
     let personenAnzahlAb13 = 0;
-    
-    // Fallback for refDate
-    const solawoche = this.$solawochen()?.find(s => s.id === this.$selectedWeek());
-    const dateStr = solawoche?.information?.dateOfFoundation;
-    const refDate = dateStr ? parseISO(String(dateStr)) : startOfYear(new Date());
-
+    const refDate = this.$priceRefDate();
     const limitFull = addYears(refDate, -13);
     const limitFree = addYears(refDate, -5);
     const rangeReduced = interval(limitFree, limitFull);
@@ -128,5 +134,57 @@ export class AnmeldungenComponent {
     return { personenAnzahl5Bis12, personenAnzahlAb13, anzahlHunde, gesamt, anzahlFamilienmitglieder, invalid };
   }
 
-  async updateFamilienpreis() { /* existing logic */ }
+  private performSingleUpdate(groupId: number, anmeldung: AnmeldungenViewModel, fieldDef: GroupMemberFieldGroup): Promise<GroupMember> {
+    const value = anmeldung.familienpreis.gesamt;
+    const { id, name, sortKey } = fieldDef;
+    const fields = [...anmeldung.fields, { id, name, value, sortKey }];
+    const groupMemberStatus = MemberStatus.ACTIVE;
+
+    return firstValueFrom(
+      this.churchToolsService.updateGroupMember(groupId, anmeldung.personId, { fields, groupMemberStatus })
+    );
+  }
+
+  async updateFamilienpreis() {
+    const groupId = this.formGroup.value.selectedWeek;
+    if (!groupId || this.$progress() > 0) return;
+
+    try {
+      const fields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
+      const familienpreisField = fields?.find(f => f.referenceName === "familienpreis");
+
+      const toUpdate = this.$anmeldungen().filter(m => m.groupMemberStatus === MemberStatus.REQUESTED);
+      if (!familienpreisField || toUpdate.length === 0) return;
+
+      this.$progress.set(0.01);
+
+      for (const [index, anmeldung] of toUpdate.entries()) {
+        try {
+          const updatedMember = await this.performSingleUpdate(groupId, anmeldung, familienpreisField);
+          const { fields, personFields, familienpreis } = anmeldung;
+          const merged = { ...updatedMember, fields, personFields, familienpreis };
+          this.$anmeldungen.update(list => list.map(m => m.id === merged.id ? merged : m));
+
+        } catch (err) {
+          console.error(`Fehler ID ${anmeldung.id}`, err);
+          this.$errorIds.update(ids => [...ids, anmeldung.id]);
+        }
+
+        this.$progress.set((index + 1) / toUpdate.length);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+    } catch (err) {
+      console.error("Globaler Fehler", err);
+    } finally {
+      setTimeout(() => this.$progress.set(0), 500);
+    }
+  }
+
+  sortableOptions = {
+    group: 'nested',
+    animation: 150,
+    fallbackOnBody: true,
+    swapThreshold: 0.65
+  };
 }
