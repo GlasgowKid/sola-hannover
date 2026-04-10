@@ -36,26 +36,27 @@
           @for (wunsch of status.wuensche; track wunsch; let idx = $index) {
             <dt>Wunsch {{ idx + 1 }}:</dt>
             <dd>
-              @if (wunsch.members.length === 1 && (wunsch.isExact || wunsch.isManuallyConfirmed)) {
+              @if ((wunsch.members.length === 1 && wunsch.isExact) || wunsch.isManuallyConfirmed) {
                 <a [href]="wunsch.members[0].person.frontendUrl">
                   {{ wunsch.members[0].person.domainAttributes.firstName }}
                   {{ wunsch.members[0].person.domainAttributes.lastName }}
                 </a>
               } @else {
-                <span class="text-danger">
+                <a
+                  href="javascript:void(0)"
+                  (click)="openResolveModal(resolveModal, row.id, wunsch.fieldName, wunsch.members)"
+                  class="text-danger"
+                >
                   {{ wunsch.text }} ({{ wunsch.members.length }} Treffer)
-                </span>
+                </a>
 
                 @if (wunsch.members.length === 1 && !wunsch.isExact) {
                   <span class="text-muted ms-2">
                     Meintest du:
-                    <a 
-                      href="javascript:void(0)" 
-                      (click)="confirmMatch(row.id, wunsch.fieldName)"
-                    >
+                    <a href="javascript:void(0)" (click)="confirmMatch(row.id, wunsch.fieldName)">
                       {{ wunsch.members[0].person.domainAttributes.firstName }}
-                      {{ wunsch.members[0].person.domainAttributes.lastName }}
-                    </a>?
+                      {{ wunsch.members[0].person.domainAttributes.lastName }} </a
+                    >?
                   </span>
                 }
               }
@@ -64,5 +65,72 @@
         </dl>
       }
     }
+  </ng-template>
+  <ng-template #resolveModal>
+    <div class="modal-header">
+      <h4 class="modal-title pull-left">Manuelle Wunschzuordnung</h4>
+      <button
+        type="button"
+        class="btn-close close pull-right"
+        aria-label="Close"
+        (click)="modalRef?.hide()"
+      >
+        <span aria-hidden="true" class="visually-hidden">&times;</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <p>
+        Bitte wähle die korrekte Person für <strong>{{ resolveState()?.fieldName }}</strong> aus:
+      </p>
+
+      @if (resolveState()?.candidates; as candidates) {
+        <ngx-datatable
+          class="bootstrap"
+          [rows]="candidates"
+          [headerHeight]="40"
+          [rowHeight]="50"
+          [limit]="5"
+          [selected]="resolveState()?.selected || []"
+          selectionType="single"
+          (selectedChange)="onCandidateSelect({ selected: $event })"
+          columnMode="force"
+        >
+          <ngx-datatable-column
+            prop="person.domainAttributes.firstName"
+            name="Vorname"
+          ></ngx-datatable-column>
+          <ngx-datatable-column
+            prop="person.domainAttributes.lastName"
+            name="Nachname"
+          ></ngx-datatable-column>
+
+          <ngx-datatable-column prop="personFields.sexId" name="m/w" [width]="50">
+            <ng-template ngx-datatable-cell-template let-value="value">
+              {{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}
+            </ng-template>
+          </ngx-datatable-column>
+
+          <ngx-datatable-column
+            prop="personFields.zip"
+            name="PLZ"
+            [width]="80"
+          ></ngx-datatable-column>
+          <ngx-datatable-column prop="personFields.city" name="Ort"></ngx-datatable-column>
+        </ngx-datatable>
+      }
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="modalRef?.hide()">Abbrechen</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="!resolveState()?.selected?.length"
+        (click)="confirmModalSelection()"
+      >
+        Übernehmen
+      </button>
+    </div>
   </ng-template>
 }

@@ -1,5 +1,7 @@
 import { PercentPipe } from '@angular/common';
-import { Component, OnChanges, TemplateRef, ViewChild, computed, input, output, signal } from '@angular/core';
+import { Component, OnChanges, TemplateRef, ViewChild, computed, inject, input, output, signal } from '@angular/core';
+import { NgxDatatableModule } from '@siemens/ngx-datatable';
+import { BsModalRef, BsModalService, ModalModule } from 'ngx-bootstrap/modal';
 import { GroupMember } from '../../../utils/ct-types';
 import { MemberUpdatePayload } from '../anmeldungen/anmeldungen.component';
 
@@ -10,6 +12,7 @@ export interface WunschMatch {
   members: GroupMember[];
   isExact: boolean;
   isManuallyConfirmed?: boolean;
+  selectedIndex?: number;
 }
 
 export interface WunschStatus {
@@ -23,7 +26,8 @@ export interface WunschStatus {
 @Component({
   selector: 'app-sola-teilnehmer-anmeldungen',
   standalone: true,
-  imports: [PercentPipe],
+  imports: [ModalModule, NgxDatatableModule, PercentPipe],
+  providers: [BsModalService],
   templateUrl: './sola-teilnehmer-anmeldungen.component.html',
   styleUrl: './sola-teilnehmer-anmeldungen.component.scss',
 })
@@ -48,9 +52,13 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       const updates: { fieldName: string, value: string }[] = [];
 
       for (const wunsch of status.wuensche) {
-        if (wunsch.members.length === 1 && (wunsch.isExact || wunsch.isManuallyConfirmed) && !this.isAlreadyUrl(wunsch.rawValue)) {
-          const value = wunsch.members[0].person?.frontendUrl;
-          updates.push({ fieldName: wunsch.fieldName, value });
+        const isConfirmed = (wunsch.members.length === 1 && wunsch.isExact) || wunsch.isManuallyConfirmed;
+        if (isConfirmed && !this.isAlreadyUrl(wunsch.rawValue)) {
+          const targetMember = this.getConfirmedMember(wunsch);
+          const value = targetMember?.person?.frontendUrl;
+          if (value) {
+            updates.push({ fieldName: wunsch.fieldName, value });
+          }
         }
       }
 
@@ -62,6 +70,16 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
   });
 
   readonly $unsavedIds = computed<number[]>(() => this.$unsavedPayloads().map(p => p.member.id));
+
+  private readonly modalService = inject(BsModalService);
+  modalRef?: BsModalRef;
+
+  readonly resolveState = signal<{
+    rowId: number;
+    fieldName: string;
+    candidates: GroupMember[];
+    selected: GroupMember[];
+  } | null>(null);
 
   ngOnChanges() {
     const raw = this.anmeldungen();
@@ -220,12 +238,45 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       .split(/\s+/)
       .filter(token => token.length > 0);
   }
-  
+
   private isAlreadyUrl(val: string): boolean {
     return val.startsWith('https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%23');
   }
 
-  confirmMatch(rowId: number, fieldName: string) {
+  getConfirmedMember(wunsch: WunschMatch): GroupMember | null {
+    if (wunsch.isManuallyConfirmed && wunsch.selectedIndex !== undefined) {
+      return wunsch.members[wunsch.selectedIndex];
+    }
+    if (wunsch.members.length > 0) {
+      return wunsch.members[0];
+    }
+    return null;
+  }
+
+  openResolveModal(template: TemplateRef<any>, rowId: number, fieldName: string, candidates: GroupMember[]) {
+    this.resolveState.set({
+      rowId,
+      fieldName,
+      candidates,
+      selected: [],
+    });
+    this.modalRef = this.modalService.show(template, { class: 'modal-lg' });
+  }
+
+  onCandidateSelect({ selected }: { selected: GroupMember[] }) {
+    this.resolveState.update(state => state ? { ...state, selected: [...selected] } : null);
+  }
+
+  confirmModalSelection() {
+    const state = this.resolveState();
+    if (state && state.selected.length === 1) {
+      const selectedIndex = state.candidates.findIndex(c => c.id === state.selected[0].id);
+      this.confirmMatch(state.rowId, state.fieldName, selectedIndex);
+      this.modalRef?.hide();
+    }
+  }
+
+  confirmMatch(rowId: number, fieldName: string, selectedIndex?: number) {
     this.$wuenscheMap.update(currentMap => {
       const newMap = new Map(currentMap);
       const oldStatus = newMap.get(rowId);
@@ -236,6 +287,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
 
       if (wIndex > -1) {
         const wunsch = { ...newStatus.wuensche[wIndex] };
+        wunsch.selectedIndex = selectedIndex !== undefined ? selectedIndex : 0;
         wunsch.isManuallyConfirmed = true;
         newStatus.wuensche[wIndex] = wunsch;
 
@@ -243,7 +295,8 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
         let hasManual = false;
 
         for (const w of newStatus.wuensche) {
-          if (!(w.isExact || w.isManuallyConfirmed) || w.members.length !== 1) {
+          const isConfirmed = (w.members.length === 1 && w.isExact) || w.isManuallyConfirmed;
+          if (!isConfirmed) {
             allFound = false;
           }
           if (w.isManuallyConfirmed) {
