@@ -1,8 +1,12 @@
-import { Component, OnChanges, TemplateRef, ViewChild, input, signal } from '@angular/core';
-import { GroupMember } from '../../../utils/ct-types';
-import { KeyValuePipe } from '@angular/common';
+import { PercentPipe } from '@angular/common';
+import { Component, OnChanges, TemplateRef, ViewChild, inject, input, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { GroupMember, GroupMemberFieldGroup } from '../../../utils/ct-types';
+import { ChurchtoolsService } from '../../services/churchtools.service';
 
 export interface WunschMatch {
+  text: string;
+  rawValue: string;
   members: GroupMember[];
   isExact: boolean;
 }
@@ -10,13 +14,13 @@ export interface WunschMatch {
 export interface WunschStatus {
   hasWunsch: boolean;
   allFound: boolean;
-  wuensche: Map<string, WunschMatch>;
+  wuensche: WunschMatch[];
 }
 
 @Component({
   selector: 'app-sola-teilnehmer-anmeldungen',
   standalone: true,
-  imports: [KeyValuePipe],
+  imports: [PercentPipe],
   templateUrl: './sola-teilnehmer-anmeldungen.component.html',
   styleUrl: './sola-teilnehmer-anmeldungen.component.scss',
 })
@@ -28,6 +32,10 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
   readonly isFamiliensola = input.required<boolean>();
   readonly $showWuensche = signal(false);
   readonly $wuenscheMap = signal<Map<number, WunschStatus>>(new Map());
+  readonly groupId = input.required<number | null>();
+  readonly $progress = signal<number>(0);
+  private readonly churchToolsService = inject(ChurchtoolsService);
+  readonly $errorIds = signal<number[]>([]);
 
   ngOnChanges() {
     const raw = this.anmeldungen();
@@ -51,28 +59,26 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     const resultMap = new Map<number, WunschStatus>();
 
     for (const row of allMembers) {
-      const w1Text = this.extractField(row, 'Wunsch 1');
-      const w2Text = this.extractField(row, 'Wunsch 2');
+      const w1Match = this.processWunschField(row, 'Wunsch 1', allMembers);
+      const w2Match = this.processWunschField(row, 'Wunsch 2', allMembers);
 
       const status: WunschStatus = {
-        hasWunsch: !!(w1Text || w2Text),
+        hasWunsch: !!(w1Match || w2Match),
         allFound: false,
-        wuensche: new Map<string, WunschMatch>(),
+        wuensche: [],
       };
 
       let w1Success = true;
       let w2Success = true;
 
-      if (w1Text) {
-        const matchResult = this.findMatches(w1Text, row.personId, allMembers);
-        status.wuensche.set(w1Text, matchResult);
-        w1Success = matchResult.members.length === 1 && matchResult.isExact;
+      if (w1Match) {
+        status.wuensche.push(w1Match);
+        w1Success = w1Match.members.length === 1 && w1Match.isExact;
       }
 
-      if (w2Text) {
-        const matchResult = this.findMatches(w2Text, row.personId, allMembers);
-        status.wuensche.set(w2Text, matchResult);
-        w2Success = matchResult.members.length === 1 && matchResult.isExact;
+      if (w2Match) {
+        status.wuensche.push(w2Match);
+        w2Success = w2Match.members.length === 1 && w2Match.isExact;
       }
 
       status.allFound = status.hasWunsch && w1Success && w2Success;
@@ -82,13 +88,35 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     this.$wuenscheMap.set(resultMap);
   }
 
-  private extractField(row: GroupMember, fieldName: string): string | null {
+  private processWunschField(row: GroupMember, fieldName: string, allMembers: GroupMember[]): WunschMatch | null {
     const field = row.fields.find(f => f.name === fieldName);
-    const val = field?.value ? String(field.value).trim() : '';
-    return val !== '' ? val : null;
+    const rawValue = field?.value ? String(field.value).trim() : '';
+    if (!rawValue) return null;
+
+    if (this.isAlreadyUrl(rawValue)) {
+      const matchedMember = allMembers.find(m => m.person?.frontendUrl === rawValue);      
+      if (matchedMember) {
+        const first = matchedMember.person?.domainAttributes?.firstName || '';
+        const last = matchedMember.person?.domainAttributes?.lastName || '';
+        return {
+          text: `${first} ${last}`.trim(),
+          rawValue,
+          members: [matchedMember],
+          isExact: true,
+        };
+      }
+    }
+
+    const matchResult = this.findMatches(rawValue, row.personId, allMembers);
+    return {
+      text: rawValue,
+      rawValue,
+      members: matchResult.members,
+      isExact: matchResult.isExact
+    };
   }
 
-  private findMatches(wunschStr: string, currentPersonId: number, allMembers: GroupMember[]): WunschMatch {
+  private findMatches(wunschStr: string, currentPersonId: number, allMembers: GroupMember[]): { members: GroupMember[], isExact: boolean } {
     const wunschTokens = this.tokenizeText(wunschStr);
     if (wunschTokens.length === 0) return { members: [], isExact: false };
 
@@ -161,5 +189,80 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       .replace(/[,.-]/g, ' ')
       .split(/\s+/)
       .filter(token => token.length > 0);
+  }
+
+  private performSingleUpdate(groupId: number, anmeldung: GroupMember, updates: { fieldDef: GroupMemberFieldGroup, value: string }[]): Promise<GroupMember> {
+    let fields = [...anmeldung.fields];
+    
+    for (const u of updates) {
+      fields = fields.filter(f => f.id !== u.fieldDef.id); 
+      fields.push({ id: u.fieldDef.id, name: u.fieldDef.name, value: u.value, sortKey: u.fieldDef.sortKey }); 
+    }
+
+    return firstValueFrom(
+      this.churchToolsService.updateGroupMember(groupId, anmeldung.personId, { fields })
+    );
+  }
+
+  async updateWuensche() {
+    const groupId = this.groupId();
+    if (!groupId || this.$progress() > 0) return;
+
+    try {
+      const fields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
+      const w1FieldDef = fields?.find(f => f.name === "Wunsch 1");
+      const w2FieldDef = fields?.find(f => f.name === "Wunsch 2");
+
+      if (!w1FieldDef && !w2FieldDef) return;
+
+      const rawMembers = this.anmeldungen();
+      const toUpdate: { member: GroupMember, updates: { fieldDef: GroupMemberFieldGroup, value: string }[] }[] = [];
+
+      for (const member of rawMembers) {
+        const status = this.$wuenscheMap().get(member.id);
+        if (!status) continue;
+
+        const updates: { fieldDef: GroupMemberFieldGroup, value: string }[] = [];
+
+        const w1Match = status.wuensche[0];
+        if (w1Match && w1FieldDef && w1Match.members.length === 1 && w1Match.isExact && !this.isAlreadyUrl(w1Match.rawValue)) {
+          updates.push({ fieldDef: w1FieldDef, value: w1Match.members[0].person?.frontendUrl });
+        }
+
+        const w2Match = status.wuensche[1];
+        if (w2Match && w2FieldDef && w2Match.members.length === 1 && w2Match.isExact && !this.isAlreadyUrl(w2Match.rawValue)) {
+          updates.push({ fieldDef: w2FieldDef, value: w2Match.members[0].person?.frontendUrl });
+        }
+
+        if (updates.length > 0) {
+          toUpdate.push({ member, updates });
+        }
+      }
+
+      if (toUpdate.length === 0) return;
+
+      this.$progress.set(0.01);
+
+      for (const [index, item] of toUpdate.entries()) {
+        try {
+          const updatedMember = await this.performSingleUpdate(groupId, item.member, item.updates);
+          item.member.fields = updatedMember.fields;
+        } catch (err) {
+          console.error(`Fehler ID ${item.member.id}`, err);
+          this.$errorIds.update(ids => [...ids, item.member.id]);
+        }
+        this.$progress.set((index + 1) / toUpdate.length);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      this.calculateWunschMatches(rawMembers);
+    } catch (err) {
+      console.error("Globaler Fehler", err);
+    } finally {
+      setTimeout(() => this.$progress.set(0), 500);
+    }
+  }
+
+  private isAlreadyUrl(val: string): boolean {
+    return val.startsWith('https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%23');
   }
 }

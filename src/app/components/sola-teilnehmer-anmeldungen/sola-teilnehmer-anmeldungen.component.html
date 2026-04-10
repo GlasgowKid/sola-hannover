@@ -1,4 +1,18 @@
 @if ($showWuensche()) {
+  <div class="d-flex justify-content-end mb-3">
+    <button
+      type="button"
+      (click)="updateWuensche()"
+      [disabled]="$progress() > 0"
+      class="btn btn-primary"
+    >
+      Wunschzuordnung übertragen
+      @if ($progress() > 0) {
+        ({{ $progress() | percent }})
+      }
+    </button>
+  </div>
+
   <ng-template #wuenscheSpalte let-row="row">
     @if ($wuenscheMap().get(row.id); as status) {
       @if (status.hasWunsch) {
@@ -19,23 +33,23 @@
     @if ($wuenscheMap().get(row.id); as status) {
       @if (status.hasWunsch) {
         <dl class="mt-3 mb-0">
-          @for (wunsch of status.wuensche | keyvalue; track wunsch.key; let idx = $index) {
+          @for (wunsch of status.wuensche; track wunsch; let idx = $index) {
             <dt>Wunsch {{ idx + 1 }}:</dt>
             <dd>
-              @if (wunsch.value.members.length === 1 && wunsch.value.isExact) {
-                <a [href]="wunsch.value.members[0].person.frontendUrl">
-                  {{ wunsch.value.members[0].person.domainAttributes.firstName }}
-                  {{ wunsch.value.members[0].person.domainAttributes.lastName }}
+              @if (wunsch.members.length === 1 && wunsch.isExact) {
+                <a [href]="wunsch.members[0].person.frontendUrl">
+                  {{ wunsch.members[0].person.domainAttributes.firstName }}
+                  {{ wunsch.members[0].person.domainAttributes.lastName }}
                 </a>
               } @else {
-                <span class="text-danger"
-                  >{{ wunsch.key }} ({{ wunsch.value.members.length }} Treffer)</span
-                >
+                <span class="text-danger">
+                  {{ wunsch.text }} ({{ wunsch.members.length }} Treffer)
+                </span>
 
-                @if (wunsch.value.members.length === 1 && !wunsch.value.isExact) {
+                @if (wunsch.members.length === 1 && !wunsch.isExact) {
                   <span class="text-muted ms-2">
-                    Meintest du: {{ wunsch.value.members[0].person.domainAttributes.firstName }}
-                    {{ wunsch.value.members[0].person.domainAttributes.lastName }}?
+                    Meintest du: {{ wunsch.members[0].person.domainAttributes.firstName }}
+                    {{ wunsch.members[0].person.domainAttributes.lastName }}?
                   </span>
                 }
               }
