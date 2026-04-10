@@ -37,6 +37,7 @@
 
               <ng-container *ngTemplateOutlet="sofa.familienmitgliederTabelle; context: { mitglieder: row.familienpreis?.weitereMitglieder }"> </ng-container>
               <ng-container *ngTemplateOutlet="sofa.preisTabelle; context: { row }"> </ng-container>
+              <ng-container *ngTemplateOutlet="solaTeilnehmer.wuenscheDetails; context: { row }"> </ng-container>
             </div>
           </ng-template>
         </ngx-datatable-row-detail>
@@ -104,6 +105,16 @@
           </ngx-datatable-column>
         }
 
+        @if (solaTeilnehmer.wuenscheSpalte) {
+          <ngx-datatable-column name="Wünsche">
+            <ng-template ngx-datatable-cell-template let-row="row">
+              <ng-container
+                *ngTemplateOutlet="solaTeilnehmer.wuenscheSpalte; context: { row }"
+              ></ng-container>
+            </ng-template>
+          </ngx-datatable-column>
+        }
+
         <ngx-datatable-column prop="groupMemberStatus" name="Status"></ngx-datatable-column>
       </ngx-datatable>
     }
@@ -116,4 +127,10 @@
     [groupId]="$selectedWeek()"
     (processedData)="onSofaDataProcessed($event)"
   ></app-sofa-anmeldungen>
+
+  <app-sola-teilnehmer-anmeldungen
+    #solaTeilnehmer
+    [anmeldungen]="$anmeldungen()"
+    [isFamiliensola]="sofa.$isFamiliensola()"
+  ></app-sola-teilnehmer-anmeldungen>
 </div>

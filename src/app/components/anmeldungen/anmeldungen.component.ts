@@ -8,6 +8,7 @@ import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { SofaAnmeldungViewModel, SofaAnmeldungenComponent } from '../sofa-anmeldungen/sofa-anmeldungen.component';
 import { SolaSelectorComponent } from '../sola-selector/sola-selector.component';
+import { SolaTeilnehmerAnmeldungenComponent } from '../sola-teilnehmer-anmeldungen/sola-teilnehmer-anmeldungen.component';
 
 @Component({
   selector: 'app-anmeldungen',
@@ -18,6 +19,7 @@ import { SolaSelectorComponent } from '../sola-selector/sola-selector.component'
     NgxDatatableModule,
     SofaAnmeldungenComponent,
     SolaSelectorComponent,
+    SolaTeilnehmerAnmeldungenComponent,
   ],
   templateUrl: './anmeldungen.component.html',
   styleUrl: './anmeldungen.component.scss',

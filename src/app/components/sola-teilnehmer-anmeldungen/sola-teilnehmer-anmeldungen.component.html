@@ -1,0 +1,40 @@
+@if ($showWuensche()) {
+  <ng-template #wuenscheSpalte let-row="row">
+    @if ($wuenscheMap().get(row.id); as status) {
+      @if (status.hasWunsch) {
+        @if (status.allFound) {
+          <span class="text-success">ja (zugeordnet)</span>
+        } @else {
+          <span class="text-danger">ja (offen)</span>
+        }
+      } @else {
+        nein
+      }
+    } @else {
+      nein
+    }
+  </ng-template>
+
+  <ng-template #wuenscheDetails let-row="row">
+    @if ($wuenscheMap().get(row.id); as status) {
+      @if (status.hasWunsch) {
+        <dl class="mt-3 mb-0">
+          @for (wunsch of status.wuensche | keyvalue; track wunsch.key; let idx = $index) {
+            <dt>Wunsch {{ idx + 1 }}:</dt>
+            <dd>
+              @if (wunsch.value.length === 1) {
+                <a [href]="wunsch.value[0].person.frontendUrl">
+                  {{ wunsch.value[0].person.domainAttributes.firstName }} 
+                  {{ wunsch.value[0].person.domainAttributes.lastName }}
+                </a>
+                <span class="text-success"></span>
+              } @else {
+                <span class="text-danger">{{ wunsch.key }} ({{ wunsch.value.length }} Treffer)</span>
+              }
+            </dd>
+          }
+        </dl>
+      }
+    }
+  </ng-template>
+}
