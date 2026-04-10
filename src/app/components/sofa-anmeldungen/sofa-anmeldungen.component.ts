@@ -1,10 +1,9 @@
-import { CurrencyPipe, PercentPipe, DatePipe } from '@angular/common';
-import { Component, OnChanges, TemplateRef, ViewChild, inject, input, output, signal } from '@angular/core';
+import { CurrencyPipe, DatePipe, PercentPipe } from '@angular/common';
+import { Component, OnChanges, TemplateRef, ViewChild, input, output, signal } from '@angular/core';
 import { addYears, interval, isAfter, isValid, isWithinInterval, parseISO } from 'date-fns';
-import { firstValueFrom } from 'rxjs';
 import { MemberStatus } from '../../../utils/ct-enums';
-import { GroupMember, GroupMemberFieldGroup } from '../../../utils/ct-types';
-import { ChurchtoolsService } from '../../services/churchtools.service';
+import { GroupMember } from '../../../utils/ct-types';
+import { MemberUpdatePayload } from '../anmeldungen/anmeldungen.component';
 
 const PRICES = { CHILD: 80, ADULT: 120, DOG: 20, BASE: 80 };
 
@@ -24,7 +23,7 @@ export interface Familienpreis {
   weitereMitglieder: WeiteresFamilienmitglied[];
 }
 
-export type SofaAnmeldungViewModel = GroupMember & { 
+export type SofaAnmeldungViewModel = GroupMember & {
   familienpreis: Familienpreis;
   displayFields: Array<{ id: number; name: string; value: unknown; sortKey: number; }>;
 };
@@ -44,16 +43,11 @@ export class SofaAnmeldungenComponent implements OnChanges {
 
   readonly anmeldungen = input.required<GroupMember[]>();
   readonly priceRefDate = input.required<Date>();
-  readonly groupId = input.required<number | null>();
-
+  readonly updateProgress = input<number>(0);
+  readonly updateRequested = output<MemberUpdatePayload[]>();
   readonly processedData = output<SofaAnmeldungViewModel[]>();
-
-  private readonly churchToolsService = inject(ChurchtoolsService);
-
   readonly $isFamiliensola = signal(false);
   readonly $internalData = signal<SofaAnmeldungViewModel[]>([]);
-  readonly $progress = signal<number>(0);
-  readonly $errorIds = signal<number[]>([]);
 
   ngOnChanges() {
     const raw = this.anmeldungen();
@@ -100,7 +94,7 @@ export class SofaAnmeldungenComponent implements OnChanges {
       const familienmitglied = anmeldung.fields.filter(({ name, value }) => name.endsWith(`Familienmitglied ${i}`) && !!value);
       if (familienmitglied.length) {
         anzahlFamilienmitglieder++;
-        
+
         const geburtstagFeld = familienmitglied.find(f => f.name.startsWith("Geburtstag"));
         const vornameFeld = familienmitglied.find(f => f.name.startsWith("Vorname"));
         const nachnameFeld = familienmitglied.find(f => f.name.startsWith("Nachname"));
@@ -134,58 +128,26 @@ export class SofaAnmeldungenComponent implements OnChanges {
 
     const gesamt = (personenAnzahl5Bis12 * PRICES.CHILD) + (personenAnzahlAb13 * PRICES.ADULT) + (anzahlHunde * PRICES.DOG) + PRICES.BASE;
 
-    return { 
-      personenAnzahl5Bis12, 
-      personenAnzahlAb13, 
-      anzahlHunde, 
-      gesamt, 
-      anzahlFamilienmitglieder, 
-      invalid, 
+    return {
+      personenAnzahl5Bis12,
+      personenAnzahlAb13,
+      anzahlHunde,
+      gesamt,
+      anzahlFamilienmitglieder,
+      invalid,
       weitereMitglieder,
     };
   }
 
-  private performSingleUpdate(groupId: number, anmeldung: SofaAnmeldungViewModel, fieldDef: GroupMemberFieldGroup): Promise<GroupMember> {
-    const value = anmeldung.familienpreis.gesamt;
-    const { id, name, sortKey } = fieldDef;
-    const fields = [...anmeldung.fields, { id, name, value, sortKey }];
-    const groupMemberStatus = MemberStatus.ACTIVE;
+  emitUpdate() {
+    const toUpdate = this.$internalData().filter(m => m.groupMemberStatus === MemberStatus.REQUESTED);
+    if (toUpdate.length === 0) return;
 
-    return firstValueFrom(
-      this.churchToolsService.updateGroupMember(groupId, anmeldung.personId, { fields, groupMemberStatus })
-    );
-  }
+    const payloads: MemberUpdatePayload[] = toUpdate.map(member => ({
+      member,
+      updates: [{ fieldName: 'familienpreis', value: member.familienpreis.gesamt }]
+    }));
 
-  async updateFamilienpreis() {
-    const groupId = this.groupId();
-    if (!groupId || this.$progress() > 0) return;
-
-    try {
-      const fields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
-      const familienpreisField = fields?.find(f => f.referenceName === "familienpreis");
-
-      const toUpdate = this.$internalData().filter(m => m.groupMemberStatus === MemberStatus.REQUESTED);
-      if (!familienpreisField || toUpdate.length === 0) return;
-
-      this.$progress.set(0.01);
-
-      for (const [index, anmeldung] of toUpdate.entries()) {
-        try {
-          const updatedMember = await this.performSingleUpdate(groupId, anmeldung, familienpreisField);
-          const { fields, personFields, familienpreis, displayFields } = anmeldung;
-          const merged = { ...updatedMember, fields, personFields, familienpreis, displayFields };
-          this.$internalData.update(list => list.map(m => m.id === merged.id ? merged : m));
-        } catch (err) {
-          console.error(`Fehler ID ${anmeldung.id}`, err);
-          this.$errorIds.update(ids => [...ids, anmeldung.id]);
-        }
-        this.$progress.set((index + 1) / toUpdate.length);
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    } catch (err) {
-      console.error("Globaler Fehler", err);
-    } finally {
-      setTimeout(() => this.$progress.set(0), 500);
-    }
+    this.updateRequested.emit(payloads);
   }
 }

@@ -30,7 +30,10 @@
                 <dl>
                   @if (row.personFields.street || row.personFields.zip || row.personFields.city) {
                     <dt>Adresse</dt>
-                    <dd>{{ row.personFields.street }}, {{ row.personFields.zip }} {{ row.personFields.city }}</dd>
+                    <dd>
+                      {{ row.personFields.street }}, {{ row.personFields.zip }}
+                      {{ row.personFields.city }}
+                    </dd>
                   }
                   @for (field of row.displayFields; track field.name) {
                     <dt>{{ field.name }}</dt>
@@ -39,9 +42,16 @@
                 </dl>
               }
 
-              <ng-container *ngTemplateOutlet="sofa.familienmitgliederTabelle; context: { mitglieder: row.familienpreis?.weitereMitglieder }"> </ng-container>
+              <ng-container
+                *ngTemplateOutlet="
+                  sofa.familienmitgliederTabelle;
+                  context: { mitglieder: row.familienpreis?.weitereMitglieder }
+                "
+              >
+              </ng-container>
               <ng-container *ngTemplateOutlet="sofa.preisTabelle; context: { row }"> </ng-container>
-              <ng-container *ngTemplateOutlet="solaTeilnehmer.wuenscheDetails; context: { row }"> </ng-container>
+              <ng-container *ngTemplateOutlet="solaTeilnehmer.wuenscheDetails; context: { row }">
+              </ng-container>
             </div>
           </ng-template>
         </ngx-datatable-row-detail>
@@ -128,14 +138,16 @@
     #sofa
     [anmeldungen]="$anmeldungen()"
     [priceRefDate]="$priceRefDate()"
-    [groupId]="$selectedWeek()"
+    [updateProgress]="$updateProgress()"
     (processedData)="onSofaDataProcessed($event)"
+    (updateRequested)="performCentralUpdate($event)"
   ></app-sofa-anmeldungen>
 
   <app-sola-teilnehmer-anmeldungen
     #solaTeilnehmer
     [anmeldungen]="$anmeldungen()"
-    [groupId]="$selectedWeek()"
+    [updateProgress]="$updateProgress()"
     [isFamiliensola]="sofa.$isFamiliensola()"
+    (updateRequested)="performCentralUpdate($event)"
   ></app-sola-teilnehmer-anmeldungen>
 </div>

@@ -2,13 +2,13 @@
   <div class="d-flex justify-content-end mb-3">
     <button
       type="button"
-      (click)="updateFamilienpreis()"
-      [disabled]="$progress() > 0"
+      (click)="emitUpdate()"
+      [disabled]="updateProgress() > 0"
       class="btn btn-primary"
     >
       Familienpreis übertragen
-      @if ($progress() > 0) {
-        ({{ $progress() | percent }})
+      @if (updateProgress() > 0) {
+        ({{ updateProgress() | percent }})
       }
     </button>
   </div>

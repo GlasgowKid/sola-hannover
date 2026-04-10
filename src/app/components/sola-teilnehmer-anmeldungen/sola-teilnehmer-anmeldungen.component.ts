@@ -1,10 +1,10 @@
 import { PercentPipe } from '@angular/common';
-import { Component, OnChanges, TemplateRef, ViewChild, inject, input, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
-import { GroupMember, GroupMemberFieldGroup } from '../../../utils/ct-types';
-import { ChurchtoolsService } from '../../services/churchtools.service';
+import { Component, OnChanges, TemplateRef, ViewChild, input, output, signal } from '@angular/core';
+import { GroupMember } from '../../../utils/ct-types';
+import { MemberUpdatePayload } from '../anmeldungen/anmeldungen.component';
 
 export interface WunschMatch {
+  fieldName: string;
   text: string;
   rawValue: string;
   members: GroupMember[];
@@ -30,12 +30,13 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
 
   readonly anmeldungen = input.required<GroupMember[]>();
   readonly isFamiliensola = input.required<boolean>();
+  readonly updateProgress = input<number>(0);
+  readonly updateRequested = output<MemberUpdatePayload[]>();
   readonly $showWuensche = signal(false);
   readonly $wuenscheMap = signal<Map<number, WunschStatus>>(new Map());
-  readonly groupId = input.required<number | null>();
-  readonly $progress = signal<number>(0);
-  private readonly churchToolsService = inject(ChurchtoolsService);
-  readonly $errorIds = signal<number[]>([]);
+
+  // Der exakte Prefix der ChurchTools URL
+  // private readonly CT_URL_PREFIX = 'https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%23';
 
   ngOnChanges() {
     const raw = this.anmeldungen();
@@ -94,11 +95,12 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     if (!rawValue) return null;
 
     if (this.isAlreadyUrl(rawValue)) {
-      const matchedMember = allMembers.find(m => m.person?.frontendUrl === rawValue);      
+      const matchedMember = allMembers.find(m => m.person?.frontendUrl === rawValue);
       if (matchedMember) {
         const first = matchedMember.person?.domainAttributes?.firstName || '';
         const last = matchedMember.person?.domainAttributes?.lastName || '';
         return {
+          fieldName,
           text: `${first} ${last}`.trim(),
           rawValue,
           members: [matchedMember],
@@ -109,6 +111,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
 
     const matchResult = this.findMatches(rawValue, row.personId, allMembers);
     return {
+      fieldName,
       text: rawValue,
       rawValue,
       members: matchResult.members,
@@ -191,74 +194,29 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       .filter(token => token.length > 0);
   }
 
-  private performSingleUpdate(groupId: number, anmeldung: GroupMember, updates: { fieldDef: GroupMemberFieldGroup, value: string }[]): Promise<GroupMember> {
-    let fields = [...anmeldung.fields];
-    
-    for (const u of updates) {
-      fields = fields.filter(f => f.id !== u.fieldDef.id); 
-      fields.push({ id: u.fieldDef.id, name: u.fieldDef.name, value: u.value, sortKey: u.fieldDef.sortKey }); 
+  emitUpdate() {
+    const payloads: MemberUpdatePayload[] = [];
+
+    for (const member of this.anmeldungen()) {
+      const status = this.$wuenscheMap().get(member.id);
+      if (!status) continue;
+
+      const updates: { fieldName: string, value: string }[] = [];
+
+      for (const wunsch of status.wuensche) {
+        if (wunsch.members.length === 1 && wunsch.isExact && !this.isAlreadyUrl(wunsch.rawValue)) {
+          const value = wunsch.members[0].person?.frontendUrl;
+          updates.push({ fieldName: wunsch.fieldName, value });
+        }
+      }
+
+      if (updates.length > 0) {
+        payloads.push({ member, updates });
+      }
     }
 
-    return firstValueFrom(
-      this.churchToolsService.updateGroupMember(groupId, anmeldung.personId, { fields })
-    );
-  }
-
-  async updateWuensche() {
-    const groupId = this.groupId();
-    if (!groupId || this.$progress() > 0) return;
-
-    try {
-      const fields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
-      const w1FieldDef = fields?.find(f => f.name === "Wunsch 1");
-      const w2FieldDef = fields?.find(f => f.name === "Wunsch 2");
-
-      if (!w1FieldDef && !w2FieldDef) return;
-
-      const rawMembers = this.anmeldungen();
-      const toUpdate: { member: GroupMember, updates: { fieldDef: GroupMemberFieldGroup, value: string }[] }[] = [];
-
-      for (const member of rawMembers) {
-        const status = this.$wuenscheMap().get(member.id);
-        if (!status) continue;
-
-        const updates: { fieldDef: GroupMemberFieldGroup, value: string }[] = [];
-
-        const w1Match = status.wuensche[0];
-        if (w1Match && w1FieldDef && w1Match.members.length === 1 && w1Match.isExact && !this.isAlreadyUrl(w1Match.rawValue)) {
-          updates.push({ fieldDef: w1FieldDef, value: w1Match.members[0].person?.frontendUrl });
-        }
-
-        const w2Match = status.wuensche[1];
-        if (w2Match && w2FieldDef && w2Match.members.length === 1 && w2Match.isExact && !this.isAlreadyUrl(w2Match.rawValue)) {
-          updates.push({ fieldDef: w2FieldDef, value: w2Match.members[0].person?.frontendUrl });
-        }
-
-        if (updates.length > 0) {
-          toUpdate.push({ member, updates });
-        }
-      }
-
-      if (toUpdate.length === 0) return;
-
-      this.$progress.set(0.01);
-
-      for (const [index, item] of toUpdate.entries()) {
-        try {
-          const updatedMember = await this.performSingleUpdate(groupId, item.member, item.updates);
-          item.member.fields = updatedMember.fields;
-        } catch (err) {
-          console.error(`Fehler ID ${item.member.id}`, err);
-          this.$errorIds.update(ids => [...ids, item.member.id]);
-        }
-        this.$progress.set((index + 1) / toUpdate.length);
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      this.calculateWunschMatches(rawMembers);
-    } catch (err) {
-      console.error("Globaler Fehler", err);
-    } finally {
-      setTimeout(() => this.$progress.set(0), 500);
+    if (payloads.length > 0) {
+      this.updateRequested.emit(payloads);
     }
   }
 
