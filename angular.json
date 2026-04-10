@@ -41,9 +41,9 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:browser",
+          "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "main": "src/main.ts",
+            "browser": "src/main.ts",
             "index": "src/index.html",
             "polyfills": [
               "zone.js"
