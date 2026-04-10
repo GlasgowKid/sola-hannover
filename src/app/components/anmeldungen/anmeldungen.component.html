@@ -28,6 +28,10 @@
             <div class="d-flex justify-content-between align-items-center p-5">
               @if (row.displayFields.length) {
                 <dl>
+                  @if (row.personFields.street || row.personFields.zip || row.personFields.city) {
+                    <dt>Adresse</dt>
+                    <dd>{{ row.personFields.street }}, {{ row.personFields.zip }} {{ row.personFields.city }}</dd>
+                  }
                   @for (field of row.displayFields; track field.name) {
                     <dt>{{ field.name }}</dt>
                     <dd>{{ field.value }}</dd>

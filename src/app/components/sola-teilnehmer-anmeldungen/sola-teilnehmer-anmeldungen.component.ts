@@ -2,10 +2,15 @@ import { Component, OnChanges, TemplateRef, ViewChild, input, signal } from '@an
 import { GroupMember } from '../../../utils/ct-types';
 import { KeyValuePipe } from '@angular/common';
 
+export interface WunschMatch {
+  members: GroupMember[];
+  isExact: boolean;
+}
+
 export interface WunschStatus {
   hasWunsch: boolean;
   allFound: boolean;
-  wuensche: Map<string, GroupMember[]>;
+  wuensche: Map<string, WunschMatch>;
 }
 
 @Component({
@@ -52,22 +57,22 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       const status: WunschStatus = {
         hasWunsch: !!(w1Text || w2Text),
         allFound: false,
-        wuensche: new Map<string, GroupMember[]>(),
+        wuensche: new Map<string, WunschMatch>(),
       };
 
       let w1Success = true;
       let w2Success = true;
 
       if (w1Text) {
-        const matches = this.findMatches(w1Text, row.personId, allMembers);
-        status.wuensche.set(w1Text, matches);
-        w1Success = matches.length === 1;
+        const matchResult = this.findMatches(w1Text, row.personId, allMembers);
+        status.wuensche.set(w1Text, matchResult);
+        w1Success = matchResult.members.length === 1 && matchResult.isExact;
       }
 
       if (w2Text) {
-        const matches = this.findMatches(w2Text, row.personId, allMembers);
-        status.wuensche.set(w2Text, matches);
-        w2Success = matches.length === 1;
+        const matchResult = this.findMatches(w2Text, row.personId, allMembers);
+        status.wuensche.set(w2Text, matchResult);
+        w2Success = matchResult.members.length === 1 && matchResult.isExact;
       }
 
       status.allFound = status.hasWunsch && w1Success && w2Success;
@@ -83,19 +88,65 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     return val !== '' ? val : null;
   }
 
-  private findMatches(wunschStr: string, currentPersonId: number, allMembers: GroupMember[]): GroupMember[] {
+  private findMatches(wunschStr: string, currentPersonId: number, allMembers: GroupMember[]): WunschMatch {
     const wunschTokens = this.tokenizeText(wunschStr);
-    if (wunschTokens.length === 0) return [];
+    if (wunschTokens.length === 0) return { members: [], isExact: false };
 
-    return allMembers.filter(candidate => {
+    const exactMatches = allMembers.filter(candidate => {
       if (candidate.personId === currentPersonId) return false;
+      const first = candidate.person?.domainAttributes?.firstName || '';
+      const last = candidate.person?.domainAttributes?.lastName || '';
+      const candidateTokens = this.tokenizeText(`${first} ${last}`);
+      return wunschTokens.every(wunschWort => candidateTokens.includes(wunschWort));
+    });
 
+    if (exactMatches.length > 0) {
+      return { members: exactMatches, isExact: true };
+    }
+
+    const fuzzyMatches = allMembers.filter(candidate => {
+      if (candidate.personId === currentPersonId) return false;
       const first = candidate.person?.domainAttributes?.firstName || '';
       const last = candidate.person?.domainAttributes?.lastName || '';
       const candidateTokens = this.tokenizeText(`${first} ${last}`);
 
-      return wunschTokens.every(wunschWort => candidateTokens.includes(wunschWort));
+      return wunschTokens.every(wunschWort => {
+        return candidateTokens.some(candidateToken => this.isFuzzyMatch(wunschWort, candidateToken));
+      });
     });
+
+    return { members: fuzzyMatches, isExact: false };
+  }
+
+  private isFuzzyMatch(a: string, b: string): boolean {
+    const dist = this.levenshtein(a, b);
+    // Bei kurzen Wörtern (<=4) erlauben wir 1 Fehler, bei längeren Wörtern 2 Fehler
+    const maxTolerance = a.length <= 4 ? 1 : 2;
+    return dist <= maxTolerance;
+  }
+
+  private levenshtein(a: string, b: string): number {
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+
+    const matrix = Array.from({ length: b.length + 1 }, () => new Array(a.length + 1).fill(0));
+    for (let i = 0; i <= b.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1,
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
   }
 
   private tokenizeText(text: string): string[] {

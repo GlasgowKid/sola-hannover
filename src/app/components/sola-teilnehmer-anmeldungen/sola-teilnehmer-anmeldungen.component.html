@@ -22,14 +22,22 @@
           @for (wunsch of status.wuensche | keyvalue; track wunsch.key; let idx = $index) {
             <dt>Wunsch {{ idx + 1 }}:</dt>
             <dd>
-              @if (wunsch.value.length === 1) {
-                <a [href]="wunsch.value[0].person.frontendUrl">
-                  {{ wunsch.value[0].person.domainAttributes.firstName }} 
-                  {{ wunsch.value[0].person.domainAttributes.lastName }}
+              @if (wunsch.value.members.length === 1 && wunsch.value.isExact) {
+                <a [href]="wunsch.value.members[0].person.frontendUrl">
+                  {{ wunsch.value.members[0].person.domainAttributes.firstName }}
+                  {{ wunsch.value.members[0].person.domainAttributes.lastName }}
                 </a>
-                <span class="text-success"></span>
               } @else {
-                <span class="text-danger">{{ wunsch.key }} ({{ wunsch.value.length }} Treffer)</span>
+                <span class="text-danger"
+                  >{{ wunsch.key }} ({{ wunsch.value.members.length }} Treffer)</span
+                >
+
+                @if (wunsch.value.members.length === 1 && !wunsch.value.isExact) {
+                  <span class="text-muted ms-2">
+                    Meintest du: {{ wunsch.value.members[0].person.domainAttributes.firstName }}
+                    {{ wunsch.value.members[0].person.domainAttributes.lastName }}?
+                  </span>
+                }
               }
             </dd>
           }

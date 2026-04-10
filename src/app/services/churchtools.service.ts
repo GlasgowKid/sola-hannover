@@ -62,7 +62,7 @@ export class ChurchtoolsService {
   }
 
   getAnmeldungen(groupId: number): Observable<GroupMember[]> {
-    const params = { personFields: ["birthday", "sexId"] };
+    const params = { personFields: ["birthday", "sexId", "street", "zip", "city"] };
     return this.loggedIn$.pipe(
       switchMap(
         (loggedIn) => loggedIn
