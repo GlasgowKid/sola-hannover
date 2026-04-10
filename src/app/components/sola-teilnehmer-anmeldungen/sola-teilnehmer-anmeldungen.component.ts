@@ -1,5 +1,5 @@
 import { PercentPipe } from '@angular/common';
-import { Component, OnChanges, TemplateRef, ViewChild, input, output, signal } from '@angular/core';
+import { Component, OnChanges, TemplateRef, ViewChild, computed, input, output, signal } from '@angular/core';
 import { GroupMember } from '../../../utils/ct-types';
 import { MemberUpdatePayload } from '../anmeldungen/anmeldungen.component';
 
@@ -14,6 +14,7 @@ export interface WunschMatch {
 export interface WunschStatus {
   hasWunsch: boolean;
   allFound: boolean;
+  allSaved: boolean;
   wuensche: WunschMatch[];
 }
 
@@ -35,8 +36,30 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
   readonly $showWuensche = signal(false);
   readonly $wuenscheMap = signal<Map<number, WunschStatus>>(new Map());
 
-  // Der exakte Prefix der ChurchTools URL
-  // private readonly CT_URL_PREFIX = 'https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%23';
+  readonly $unsavedPayloads = computed<MemberUpdatePayload[]>(() => {
+    const payloads: MemberUpdatePayload[] = [];
+
+    for (const member of this.anmeldungen()) {
+      const status = this.$wuenscheMap().get(member.id);
+      if (!status) continue;
+
+      const updates: { fieldName: string, value: string }[] = [];
+
+      for (const wunsch of status.wuensche) {
+        if (wunsch.members.length === 1 && wunsch.isExact && !this.isAlreadyUrl(wunsch.rawValue)) {
+          const value = wunsch.members[0].person?.frontendUrl;
+          updates.push({ fieldName: wunsch.fieldName, value });
+        }
+      }
+
+      if (updates.length > 0) {
+        payloads.push({ member, updates });
+      }
+    }
+    return payloads;
+  });
+
+  readonly $unsavedIds = computed<number[]>(() => this.$unsavedPayloads().map(p => p.member.id));
 
   ngOnChanges() {
     const raw = this.anmeldungen();
@@ -66,6 +89,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       const status: WunschStatus = {
         hasWunsch: !!(w1Match || w2Match),
         allFound: false,
+        allSaved: false,
         wuensche: [],
       };
 
@@ -83,6 +107,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       }
 
       status.allFound = status.hasWunsch && w1Success && w2Success;
+      status.allSaved = status.allFound && status.wuensche.every(w => this.isAlreadyUrl(w.rawValue));
       resultMap.set(row.id, status);
     }
 
@@ -195,26 +220,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
   }
 
   emitUpdate() {
-    const payloads: MemberUpdatePayload[] = [];
-
-    for (const member of this.anmeldungen()) {
-      const status = this.$wuenscheMap().get(member.id);
-      if (!status) continue;
-
-      const updates: { fieldName: string, value: string }[] = [];
-
-      for (const wunsch of status.wuensche) {
-        if (wunsch.members.length === 1 && wunsch.isExact && !this.isAlreadyUrl(wunsch.rawValue)) {
-          const value = wunsch.members[0].person?.frontendUrl;
-          updates.push({ fieldName: wunsch.fieldName, value });
-        }
-      }
-
-      if (updates.length > 0) {
-        payloads.push({ member, updates });
-      }
-    }
-
+    const payloads = this.$unsavedPayloads();
     if (payloads.length > 0) {
       this.updateRequested.emit(payloads);
     }

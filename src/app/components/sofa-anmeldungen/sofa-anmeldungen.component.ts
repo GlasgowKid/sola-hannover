@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe, PercentPipe } from '@angular/common';
-import { Component, OnChanges, TemplateRef, ViewChild, input, output, signal } from '@angular/core';
+import { Component, OnChanges, TemplateRef, ViewChild, computed, input, output, signal } from '@angular/core';
 import { addYears, interval, isAfter, isValid, isWithinInterval, parseISO } from 'date-fns';
 import { MemberStatus } from '../../../utils/ct-enums';
 import { GroupMember } from '../../../utils/ct-types';
@@ -48,6 +48,17 @@ export class SofaAnmeldungenComponent implements OnChanges {
   readonly processedData = output<SofaAnmeldungViewModel[]>();
   readonly $isFamiliensola = signal(false);
   readonly $internalData = signal<SofaAnmeldungViewModel[]>([]);
+
+  readonly $unsavedPayloads = computed<MemberUpdatePayload[]>(() => {
+    return this.$internalData()
+      .filter(m => m.groupMemberStatus === MemberStatus.REQUESTED)
+      .map(member => ({
+        member,
+        updates: [{ fieldName: 'familienpreis', value: member.familienpreis.gesamt }]
+      }));
+  });
+
+  readonly $unsavedIds = computed<number[]>(() => this.$unsavedPayloads().map(p => p.member.id));
 
   ngOnChanges() {
     const raw = this.anmeldungen();
@@ -140,14 +151,9 @@ export class SofaAnmeldungenComponent implements OnChanges {
   }
 
   emitUpdate() {
-    const toUpdate = this.$internalData().filter(m => m.groupMemberStatus === MemberStatus.REQUESTED);
-    if (toUpdate.length === 0) return;
-
-    const payloads: MemberUpdatePayload[] = toUpdate.map(member => ({
-      member,
-      updates: [{ fieldName: 'familienpreis', value: member.familienpreis.gesamt }]
-    }));
-
-    this.updateRequested.emit(payloads);
+    const payloads = this.$unsavedPayloads();
+    if (payloads.length > 0) {
+      this.updateRequested.emit(payloads);
+    }
   }
 }

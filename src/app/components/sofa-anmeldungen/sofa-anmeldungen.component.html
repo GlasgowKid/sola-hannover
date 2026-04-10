@@ -3,7 +3,7 @@
     <button
       type="button"
       (click)="emitUpdate()"
-      [disabled]="updateProgress() > 0"
+      [disabled]="updateProgress() > 0 || $unsavedPayloads().length === 0"
       class="btn btn-primary"
     >
       Familienpreis übertragen

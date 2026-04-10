@@ -129,7 +129,16 @@
           </ngx-datatable-column>
         }
 
-        <ngx-datatable-column prop="groupMemberStatus" name="Status"></ngx-datatable-column>
+        <ngx-datatable-column prop="groupMemberStatus" name="Status">
+          <ng-template ngx-datatable-cell-template let-row="row" let-value="value">
+            <span
+              [class.fw-bold]="
+                sofa.$unsavedIds().includes(row.id) || solaTeilnehmer.$unsavedIds().includes(row.id)
+              "
+              >{{ value }}</span
+            >
+          </ng-template>
+        </ngx-datatable-column>
       </ngx-datatable>
     }
   }

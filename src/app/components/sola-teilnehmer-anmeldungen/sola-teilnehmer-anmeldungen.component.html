@@ -3,7 +3,7 @@
     <button
       type="button"
       (click)="emitUpdate()"
-      [disabled]="updateProgress() > 0"
+      [disabled]="updateProgress() > 0 || $unsavedPayloads().length === 0"
       class="btn btn-primary"
     >
       Wunschzuordnung übertragen
@@ -15,17 +15,15 @@
 
   <ng-template #wuenscheSpalte let-row="row">
     @if ($wuenscheMap().get(row.id); as status) {
-      @if (status.hasWunsch) {
-        @if (status.allFound) {
-          <span class="text-success">ja (zugeordnet)</span>
-        } @else {
-          <span class="text-danger">ja (offen)</span>
-        }
-      } @else {
+      @if (!status.hasWunsch) {
         nein
+      } @else if (!status.allFound) {
+        <span class="text-danger">ja (offen)</span>
+      } @else if (!status.allSaved) {
+        <span class="text-success">ja (gefunden)</span>
+      } @else {
+        <span class="text-success">ja (zugeordnet)</span>
       }
-    } @else {
-      nein
     }
   </ng-template>
 
