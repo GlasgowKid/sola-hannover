@@ -9,12 +9,14 @@ export interface WunschMatch {
   rawValue: string;
   members: GroupMember[];
   isExact: boolean;
+  isManuallyConfirmed?: boolean;
 }
 
 export interface WunschStatus {
   hasWunsch: boolean;
   allFound: boolean;
   allSaved: boolean;
+  hasManual?: boolean;
   wuensche: WunschMatch[];
 }
 
@@ -46,7 +48,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       const updates: { fieldName: string, value: string }[] = [];
 
       for (const wunsch of status.wuensche) {
-        if (wunsch.members.length === 1 && wunsch.isExact && !this.isAlreadyUrl(wunsch.rawValue)) {
+        if (wunsch.members.length === 1 && (wunsch.isExact || wunsch.isManuallyConfirmed) && !this.isAlreadyUrl(wunsch.rawValue)) {
           const value = wunsch.members[0].person?.frontendUrl;
           updates.push({ fieldName: wunsch.fieldName, value });
         }
@@ -218,15 +220,51 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       .split(/\s+/)
       .filter(token => token.length > 0);
   }
+  
+  private isAlreadyUrl(val: string): boolean {
+    return val.startsWith('https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%23');
+  }
+
+  confirmMatch(rowId: number, fieldName: string) {
+    this.$wuenscheMap.update(currentMap => {
+      const newMap = new Map(currentMap);
+      const oldStatus = newMap.get(rowId);
+      if (!oldStatus) return newMap;
+
+      const newStatus = { ...oldStatus, wuensche: [...oldStatus.wuensche] };
+      const wIndex = newStatus.wuensche.findIndex(w => w.fieldName === fieldName);
+
+      if (wIndex > -1) {
+        const wunsch = { ...newStatus.wuensche[wIndex] };
+        wunsch.isManuallyConfirmed = true;
+        newStatus.wuensche[wIndex] = wunsch;
+
+        let allFound = true;
+        let hasManual = false;
+
+        for (const w of newStatus.wuensche) {
+          if (!(w.isExact || w.isManuallyConfirmed) || w.members.length !== 1) {
+            allFound = false;
+          }
+          if (w.isManuallyConfirmed) {
+            hasManual = true;
+          }
+        }
+
+        newStatus.allFound = allFound;
+        newStatus.hasManual = hasManual;
+        newStatus.allSaved = newStatus.allFound && newStatus.wuensche.every(w => this.isAlreadyUrl(w.rawValue));
+
+        newMap.set(rowId, newStatus);
+      }
+      return newMap;
+    });
+  }
 
   emitUpdate() {
     const payloads = this.$unsavedPayloads();
     if (payloads.length > 0) {
       this.updateRequested.emit(payloads);
     }
-  }
-
-  private isAlreadyUrl(val: string): boolean {
-    return val.startsWith('https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%23');
   }
 }

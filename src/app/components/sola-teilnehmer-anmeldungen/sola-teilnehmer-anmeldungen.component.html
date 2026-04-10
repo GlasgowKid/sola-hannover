@@ -19,6 +19,8 @@
         nein
       } @else if (!status.allFound) {
         <span class="text-danger">ja (offen)</span>
+      } @else if (status.hasManual) {
+        <span class="text-success">ja (manuell)</span>
       } @else if (!status.allSaved) {
         <span class="text-success">ja (gefunden)</span>
       } @else {
@@ -34,7 +36,7 @@
           @for (wunsch of status.wuensche; track wunsch; let idx = $index) {
             <dt>Wunsch {{ idx + 1 }}:</dt>
             <dd>
-              @if (wunsch.members.length === 1 && wunsch.isExact) {
+              @if (wunsch.members.length === 1 && (wunsch.isExact || wunsch.isManuallyConfirmed)) {
                 <a [href]="wunsch.members[0].person.frontendUrl">
                   {{ wunsch.members[0].person.domainAttributes.firstName }}
                   {{ wunsch.members[0].person.domainAttributes.lastName }}
@@ -46,8 +48,14 @@
 
                 @if (wunsch.members.length === 1 && !wunsch.isExact) {
                   <span class="text-muted ms-2">
-                    Meintest du: {{ wunsch.members[0].person.domainAttributes.firstName }}
-                    {{ wunsch.members[0].person.domainAttributes.lastName }}?
+                    Meintest du:
+                    <a 
+                      href="javascript:void(0)" 
+                      (click)="confirmMatch(row.id, wunsch.fieldName)"
+                    >
+                      {{ wunsch.members[0].person.domainAttributes.firstName }}
+                      {{ wunsch.members[0].person.domainAttributes.lastName }}
+                    </a>?
                   </span>
                 }
               }
