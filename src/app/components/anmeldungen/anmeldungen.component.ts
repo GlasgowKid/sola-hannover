@@ -8,7 +8,7 @@ import { debounceTime, distinctUntilChanged, filter, firstValueFrom, map, switch
 import { MemberStatus } from '../../../utils/ct-enums';
 import { GroupMember, GroupMemberFieldGroup } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
-
+import { SortableDirective } from '../../directives/sortable.directive';
 
 const PRICES = { CHILD: 80, ADULT: 120, DOG: 20, BASE: 80 };
 
@@ -26,7 +26,7 @@ type AnmeldungenViewModel = GroupMember & { familienpreis: Familienpreis };
 @Component({
   selector: 'app-anmeldungen',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, NgxDatatableModule, PercentPipe],
+  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, NgxDatatableModule, PercentPipe, SortableDirective],
   templateUrl: './anmeldungen.component.html',
   styleUrl: './anmeldungen.component.scss',
 })
@@ -42,7 +42,10 @@ export class AnmeldungenComponent {
   });
   
   view = signal<'admin' | 'participants'>('admin');
-
+  groups = signal<AnmeldungenViewModel[][]>(Array.from({ length: 8 }, () => []));
+  toggleView() {
+    this.view.update(v => v === 'admin' ? 'participants' : 'admin');
+  }
 
   readonly $groupTypes = toSignal(this.churchToolsService.getGroupTypes());
   readonly $jahre = toSignal(this.churchToolsService.getJahre());
@@ -85,10 +88,6 @@ export class AnmeldungenComponent {
       this.$anmeldungen.set(viewModels);
       this.$errorIds.set([]);
     });
-  }
-
-  toggleView() {
-    this.view.update(v => v === 'admin' ? 'participants' : 'admin');
   }
 
   private calculateFamilienpreis(anmeldung: GroupMember): Familienpreis {
@@ -187,4 +186,28 @@ export class AnmeldungenComponent {
     fallbackOnBody: true,
     swapThreshold: 0.65
   };
+
+  moveParticipant(movedItem: AnmeldungenViewModel, targetList: 'main' | number) {
+  // Remove from everywhere first
+  this.$anmeldungen.update(list => list.filter(p => p.id !== movedItem.id));
+  this.groups.update(groups => groups.map(g => g.filter(p => p.id !== movedItem.id)));
+
+  // Add to target
+  if (targetList === 'main') {
+    this.$anmeldungen.update(list => [...list, movedItem]);
+  } else {
+    this.groups.update(groups => {
+      const newGroups = [...groups];
+      newGroups[targetList] = [...newGroups[targetList], movedItem];
+      return newGroups;
+    });
+  }
+}
+
+  getGenderClass(p: AnmeldungenViewModel): string {
+    const sexId = p.personFields?.sexId;
+    if (sexId === 1) return 'border-primary border-3 bg-blue-light'; // Boy (Blue)
+    if (sexId === 2) return 'border-danger border-3 bg-red-light';   // Girl (Red)
+    return 'bg-white';
+  }
 }

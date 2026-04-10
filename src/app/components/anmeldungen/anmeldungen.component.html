@@ -178,42 +178,49 @@
       }
     }
   } @else {
-    @if($anmeldungen(); as anmeldungen) {
-      <div class="card shadow-sm p-3 mt-3">
-        <h3 class="mb-3">Teilnehmerliste</h3>
-        <ngx-datatable
-          #datatable
-          [rows]="anmeldungen"
-          [messages]="{ emptyMessage: 'Keine Teilnehmer gefunden', totalMessage: 'insgesamt' }"
-          [headerHeight]="50"
-          [rowHeight]="50"
-          [footerHeight]="50"
-          columnMode="force"
-          class="bootstrap"
-        >
-          <ngx-datatable-column
-            prop="person.domainAttributes.firstName"
-            name="Vorname"
-          ></ngx-datatable-column>
-
-          <ngx-datatable-column
-            prop="person.domainAttributes.lastName"
-            name="Nachname"
-          ></ngx-datatable-column>
-
-          <ngx-datatable-column prop="personFields.sexId" name="m/w">
-            <ng-template ngx-datatable-cell-template let-value="value">
-              {{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}
-            </ng-template>
-          </ngx-datatable-column>
-
-          <ngx-datatable-column prop="personFields.birthday" name="Geburtstag">
-            <ng-template ngx-datatable-cell-template let-value="value">
-              {{ value | date : 'dd.MM.yyyy' }}
-            </ng-template>
-          </ngx-datatable-column>
-        </ngx-datatable>
+    <div class="row mt-4">
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-primary text-white">Alle Teilnehmer</div>
+        
+        <div class="card-body p-2" sortable style="min-height: 400px; background: #fafafa;">
+          @for (p of $anmeldungen(); track p.id) {
+            <div class="p-3 mb-2 border rounded bg-white shadow-sm cursor-move">
+              <strong>
+                {{ p.person.domainAttributes.firstName }} 
+                {{ p.person.domainAttributes.lastName }}
+              </strong>
+              <div class="small text-muted">
+                {{ $any(p.personFields?.birthday) | date : 'dd.MM.yyyy' }}
+              </div>
+            </div>
+          }
+        </div>
       </div>
-    }
+    </div>
+
+    <div class="col-md-8">
+      <div class="row g-3">
+        @for (group of groups(); track $index) {
+          <div class="col-md-6">
+            <div class="card border-primary">
+              <div class="card-header py-1 bg-light">Gruppe {{ $index + 1 }}</div>
+              
+              <div class="card-body p-2" sortable style="min-height: 120px; background: #fff;">
+                @for (item of group; track item.id) {
+                  <div class="p-2 mb-1 bg-white border rounded shadow-sm cursor-move">
+                    <strong>
+                      {{ item.person.domainAttributes.firstName }} 
+                      {{ item.person.domainAttributes.lastName }}
+                    </strong>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
   }
 </div>
