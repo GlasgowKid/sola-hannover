@@ -183,12 +183,13 @@
       <div class="card shadow-sm h-100">
         <div class="card-header bg-primary text-white">Alle Teilnehmer</div>
         
-        <div class="card-body p-2" sortable style="min-height: 400px; background: #fafafa;">
+        <div class="card-body p-2" sortable data-list-id="main" (onDrop)="onDrop($event)" style="min-height: 400px; background: #fafafa;">
           @for (p of $anmeldungen(); track p.id) {
-            <div class="p-3 mb-2 border rounded bg-white shadow-sm cursor-move">
+            <div class="p-3 mb-2 border rounded bg-white shadow-sm cursor-move" [attr.data-id]="p.id">
               <strong>
                 {{ p.person.domainAttributes.firstName }} 
                 {{ p.person.domainAttributes.lastName }}
+                <small class="text-muted">(#{{ p.id }})</small>
               </strong>
               <div class="small text-muted">
                 {{ $any(p.personFields?.birthday) | date : 'dd.MM.yyyy' }}
@@ -206,19 +207,32 @@
             <div class="card border-primary">
               <div class="card-header py-1 bg-light">Gruppe {{ $index + 1 }}</div>
               
-              <div class="card-body p-2" sortable style="min-height: 120px; background: #fff;">
+              <div class="card-body p-2" sortable [attr.data-list-id]="$index" (onDrop)="onDrop($event)" style="min-height: 120px; background: #fff;">
                 @for (item of group; track item.id) {
-                  <div class="p-2 mb-1 bg-white border rounded shadow-sm cursor-move">
+                  <div class="p-2 mb-1 bg-white border rounded shadow-sm cursor-move" [attr.data-id]="item.id">
                     <strong>
                       {{ item.person.domainAttributes.firstName }} 
                       {{ item.person.domainAttributes.lastName }}
+                      <small class="text-muted">(#{{ item.id }})</small>
                     </strong>
+                    <div class="small text-muted">
+                      {{ $any(item.personFields?.birthday) | date : 'dd.MM.yyyy' }}
+                    </div>
                   </div>
                 }
               </div>
             </div>
           </div>
         }
+      </div>
+      <br>
+      <div class="mb-3 d-flex justify-content-end gap-2">
+        <button class="btn btn-outline-success" (click)="saveGroups()">
+          Gruppen speichern
+        </button>
+        <button class="btn btn-outline-info" (click)="loadGroups()">
+          Gruppen laden
+        </button>
       </div>
     </div>
   </div>

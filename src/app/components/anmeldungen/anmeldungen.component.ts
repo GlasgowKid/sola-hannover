@@ -55,7 +55,10 @@ export class AnmeldungenComponent {
   private readonly solawochen$ = this.formGroup.controls.selectedYear.valueChanges.pipe(
     distinctUntilChanged(),
     debounceTime(1000),
-    tap(() => this.formGroup.controls.selectedWeek.reset()),
+    tap(() => {
+      this.formGroup.controls.selectedWeek.reset();
+      this.groups.set(Array.from({ length: 8 }, () => []));
+    }),
     filter((value): value is number => !!value),
     switchMap(groupId => this.churchToolsService.getSolawochen(groupId)),
   );
@@ -63,6 +66,9 @@ export class AnmeldungenComponent {
   private readonly anmeldungen$ = this.formGroup.controls.selectedWeek.valueChanges.pipe(
     distinctUntilChanged(),
     debounceTime(1000),
+    tap(() => {
+      this.groups.set(Array.from({ length: 8 }, () => []));
+    }),
     filter((value): value is number => !!value),
     switchMap(groupId => this.churchToolsService.getAnmeldungen(groupId)),
   );
@@ -210,4 +216,81 @@ export class AnmeldungenComponent {
     if (sexId === 2) return 'border-danger border-3 bg-red-light';   // Girl (Red)
     return 'bg-white';
   }
+
+  private get storageKey(): string {
+  return `groups_assignment_${this.formGroup.value.selectedWeek}`;
+}
+
+// 2. The handler for the Sortable Directive's onDrop event
+saveGroups() {
+  const weekId = this.formGroup.value.selectedWeek;
+  if (!weekId) return;
+
+  // We only store the IDs of the persons in each group to keep the storage clean
+  const assignment = this.groups().map(group => group.map(p => p.id));
+  
+  localStorage.setItem(`groups_week_${weekId}`, JSON.stringify(assignment));
+  alert('Gruppen lokal gespeichert!');
+}
+loadGroups() {
+  const weekId = this.formGroup.value.selectedWeek;
+  if (!weekId) return;
+
+  const savedData = localStorage.getItem(`groups_week_${weekId}`);
+  if (!savedData) {
+    alert('Keine gespeicherten Gruppen für diese Woche gefunden.');
+    return;
+  }
+
+  const groupIds: number[][] = JSON.parse(savedData);
+  const allParticipants = this.$anmeldungen();
+
+  // Create new group arrays based on saved IDs
+  const newGroups: AnmeldungenViewModel[][] = groupIds.map(ids => 
+    allParticipants.filter(p => ids.includes(p.id))
+  );
+
+  // Update the groups signal
+  this.groups.set(newGroups);
+
+  // Optional: Remove assigned participants from the main list 
+  // so they don't appear in both places
+  const assignedIds = groupIds.flat();
+  this.$anmeldungen.update(list => list.filter(p => !assignedIds.includes(p.id)));
+}
+
+onDrop(event: { item: any, from: string, to: string, oldIndex: number, newIndex: number }) {
+  const personId = Number(event.item.getAttribute('data-id')); // Add data-id to your HTML items
+  
+  // 1. Find the item in the current state
+  let movedItem: AnmeldungenViewModel | undefined;
+  
+  if (event.from === 'main') {
+    movedItem = this.$anmeldungen().find(p => p.id === personId);
+  } else {
+    movedItem = this.groups()[Number(event.from)].find(p => p.id === personId);
+  }
+
+  if (!movedItem) return;
+
+  // 2. Remove from source signal
+  if (event.from === 'main') {
+    this.$anmeldungen.update(list => list.filter(p => p.id !== personId));
+  } else {
+    this.groups.update(gs => {
+      gs[Number(event.from)] = gs[Number(event.from)].filter(p => p.id !== personId);
+      return [...gs];
+    });
+  }
+
+  // 3. Add to target signal
+  if (event.to === 'main') {
+    this.$anmeldungen.update(list => [...list, movedItem!]);
+  } else {
+    this.groups.update(gs => {
+      gs[Number(event.to)].push(movedItem!);
+      return [...gs];
+    });
+  }
+}
 }

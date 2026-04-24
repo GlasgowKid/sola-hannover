@@ -1,5 +1,5 @@
 import { Directive, ElementRef, OnInit, OnDestroy, inject, Input, Output, EventEmitter } from '@angular/core';
-import Sortable from 'sortablejs';
+import Sortable, { SortableEvent } from 'sortablejs';
 
 @Directive({
   selector: '[sortable]',
@@ -8,26 +8,34 @@ import Sortable from 'sortablejs';
 export class SortableDirective implements OnInit, OnDestroy {
   private el = inject(ElementRef);
   
-  @Input() list: any[] = []; 
-  @Output() listChange = new EventEmitter<any[]>();
+  @Input() sortableGroup: string = 'nested';
+  @Input() sortableData: any;
+  @Output() onDrop = new EventEmitter<{ item: any, from: any, to: any, oldIndex: number, newIndex: number }>();
 
   private sortable?: Sortable;
 
   ngOnInit() {
     this.sortable = new Sortable(this.el.nativeElement, {
-      group: 'participants-shared-pool', // Identical name across all lists enables nesting
+      group: this.sortableGroup,
       animation: 150,
       fallbackOnBody: true,
       swapThreshold: 0.65,
-      // Triggered whenever a drag-and-drop operation finishes
-      onEnd: (evt) => {
-        // We handle the data transfer logic in the component to manage multi-signal updates
-        // This 'onEnd' is kept simple to avoid conflicts with shared pool logic
+      onAdd: (evt: SortableEvent) => {
+        this.emitMove(evt);
       },
-      // When an item is dropped into THIS list from another list
-      onAdd: (evt) => {
-        // Handled by component logic via event capturing or shared methods
+      onUpdate: (evt: SortableEvent) => {
+        this.emitMove(evt);
       }
+    });
+  }
+
+  private emitMove(evt: SortableEvent) {
+    this.onDrop.emit({
+      item: evt.item,
+      from: (evt.from as any).getAttribute('data-list-id'),
+      to: (evt.to as any).getAttribute('data-list-id'),
+      oldIndex: evt.oldIndex!,
+      newIndex: evt.newIndex!
     });
   }
 
