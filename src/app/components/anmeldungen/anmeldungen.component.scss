@@ -24,3 +24,17 @@ th {
     text-align: left;
   }
 }
+
+.bg-blue-light {
+    background-color: #e7f3ff !important; /* Soft Blue */
+    border-color: #0d6efd !important;      /* Bootstrap Primary Blue */
+}
+
+.bg-red-light {
+    background-color: #fce8e8 !important;  /* Soft Red */
+    border-color: #dc3545 !important;      /* Bootstrap Danger Red */
+}
+
+.cursor-move {
+    cursor: move;
+}

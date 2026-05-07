@@ -40,11 +40,17 @@ export class AnmeldungenComponent {
     selectedYear: this.fb.control<number | null>(null),
     selectedWeek: this.fb.control<number | null>(null),
   });
-  
-  view = signal<'admin' | 'participants'>('admin');
+
+  view = signal<'participants' | 'groups'>('participants');
   groups = signal<AnmeldungenViewModel[][]>(Array.from({ length: 8 }, () => []));
   toggleView() {
-    this.view.update(v => v === 'admin' ? 'participants' : 'admin');
+    this.view.update(v => v === 'participants' ? 'groups' : 'participants');
+  }
+
+
+  showIds = signal<boolean>(false);
+  toggleIds() {
+    this.showIds.update(v => !v);
   }
 
   readonly $groupTypes = toSignal(this.churchToolsService.getGroupTypes());
@@ -194,21 +200,21 @@ export class AnmeldungenComponent {
   };
 
   moveParticipant(movedItem: AnmeldungenViewModel, targetList: 'main' | number) {
-  // Remove from everywhere first
-  this.$anmeldungen.update(list => list.filter(p => p.id !== movedItem.id));
-  this.groups.update(groups => groups.map(g => g.filter(p => p.id !== movedItem.id)));
+    // Remove from everywhere first
+    this.$anmeldungen.update(list => list.filter(p => p.id !== movedItem.id));
+    this.groups.update(groups => groups.map(g => g.filter(p => p.id !== movedItem.id)));
 
-  // Add to target
-  if (targetList === 'main') {
-    this.$anmeldungen.update(list => [...list, movedItem]);
-  } else {
-    this.groups.update(groups => {
-      const newGroups = [...groups];
-      newGroups[targetList] = [...newGroups[targetList], movedItem];
-      return newGroups;
-    });
+    // Add to target
+    if (targetList === 'main') {
+      this.$anmeldungen.update(list => [...list, movedItem]);
+    } else {
+      this.groups.update(groups => {
+        const newGroups = [...groups];
+        newGroups[targetList] = [...newGroups[targetList], movedItem];
+        return newGroups;
+      });
+    }
   }
-}
 
   getGenderClass(p: AnmeldungenViewModel): string {
     const sexId = p.personFields?.sexId;
@@ -218,79 +224,226 @@ export class AnmeldungenComponent {
   }
 
   private get storageKey(): string {
-  return `groups_assignment_${this.formGroup.value.selectedWeek}`;
-}
-
-// 2. The handler for the Sortable Directive's onDrop event
-saveGroups() {
-  const weekId = this.formGroup.value.selectedWeek;
-  if (!weekId) return;
-
-  // We only store the IDs of the persons in each group to keep the storage clean
-  const assignment = this.groups().map(group => group.map(p => p.id));
-  
-  localStorage.setItem(`groups_week_${weekId}`, JSON.stringify(assignment));
-  alert('Gruppen lokal gespeichert!');
-}
-loadGroups() {
-  const weekId = this.formGroup.value.selectedWeek;
-  if (!weekId) return;
-
-  const savedData = localStorage.getItem(`groups_week_${weekId}`);
-  if (!savedData) {
-    alert('Keine gespeicherten Gruppen für diese Woche gefunden.');
-    return;
+    return `groups_assignment_${this.formGroup.value.selectedWeek}`;
   }
 
-  const groupIds: number[][] = JSON.parse(savedData);
-  const allParticipants = this.$anmeldungen();
+  // 2. The handler for the Sortable Directive's onDrop event
+  saveGroups() {
+    const weekId = this.formGroup.value.selectedWeek;
+    if (!weekId) return;
 
-  // Create new group arrays based on saved IDs
-  const newGroups: AnmeldungenViewModel[][] = groupIds.map(ids => 
-    allParticipants.filter(p => ids.includes(p.id))
-  );
+    // We only store the IDs of the persons in each group to keep the storage clean
+    const assignment = this.groups().map(group => group.map(p => p.id));
 
-  // Update the groups signal
-  this.groups.set(newGroups);
-
-  // Optional: Remove assigned participants from the main list 
-  // so they don't appear in both places
-  const assignedIds = groupIds.flat();
-  this.$anmeldungen.update(list => list.filter(p => !assignedIds.includes(p.id)));
-}
-
-onDrop(event: { item: any, from: string, to: string, oldIndex: number, newIndex: number }) {
-  const personId = Number(event.item.getAttribute('data-id')); // Add data-id to your HTML items
-  
-  // 1. Find the item in the current state
-  let movedItem: AnmeldungenViewModel | undefined;
-  
-  if (event.from === 'main') {
-    movedItem = this.$anmeldungen().find(p => p.id === personId);
-  } else {
-    movedItem = this.groups()[Number(event.from)].find(p => p.id === personId);
+    localStorage.setItem(`groups_week_${weekId}`, JSON.stringify(assignment));
+    alert('Gruppen lokal gespeichert!');
   }
 
-  if (!movedItem) return;
+  async saveGroupsServer() {
+    const groupId = this.formGroup.value.selectedWeek;
+    if (!groupId || this.$progress() > 0) return;
 
-  // 2. Remove from source signal
-  if (event.from === 'main') {
-    this.$anmeldungen.update(list => list.filter(p => p.id !== personId));
-  } else {
-    this.groups.update(gs => {
-      gs[Number(event.from)] = gs[Number(event.from)].filter(p => p.id !== personId);
-      return [...gs];
+    try {
+      const allFields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
+      const targetField = allFields.find(f => f.name === 'Stammeszugehörigkeit' || f.name === 'Gruppenzugehörigkeit');
+
+      if (!targetField) {
+        alert("Zielfeld nicht gefunden!");
+        return;
+      }
+
+      const fieldId = targetField.id;
+      this.$progress.set(0.01);
+
+      // 1. Collect all individual update functions (without executing them yet)
+      const tasks: (() => Promise<void>)[] = [];
+
+      // Assigned groups
+      this.groups().forEach((group, i) => {
+        const groupName = `Stamm ${i + 1}`;
+        group.forEach(member => {
+          tasks.push(async () => {
+            const updated = await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: groupName }));
+            this.groups.update(gs => {
+              const newGs = [...gs];
+              newGs[i] = newGs[i].map(m => m.id === member.id ? { ...m, fields: updated.fields } : m);
+              return newGs;
+            });
+          });
+        });
+      });
+
+      // Unassigned members
+      this.$anmeldungen().forEach(member => {
+        tasks.push(async () => {
+          const updated = await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: null }));
+          this.$anmeldungen.update(list => list.map(m => m.id === member.id ? { ...m, fields: updated.fields } : m));
+        });
+      });
+
+      // 2. Execute in chunks (Rate Limiting)
+      const CHUNK_SIZE = 15; // Adjust this number to control the rate limit
+      for (let i = 0; i < tasks.length; i += CHUNK_SIZE) {
+        const chunk = tasks.slice(i, i + CHUNK_SIZE);
+        await Promise.all(chunk.map(task => task()));
+
+        // Update progress bar
+        this.$progress.set((i + chunk.length) / tasks.length);
+
+        // Optional: Add a small delay between chunks if the server is very sensitive
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      alert('Speichern erfolgreich abgeschlossen!');
+    } catch (err) {
+      console.error("Speicherfehler", err);
+      alert("Ein Fehler ist aufgetreten beim Speichern.");
+    } finally {
+      this.$progress.set(0);
+    }
+  }
+
+  // Add this method to your AnmeldungenComponent class
+  async saveGroupsServerSlow() {
+    const groupId = this.formGroup.value.selectedWeek;
+    if (!groupId || this.$progress() > 0) return;
+
+    try {
+      const allFields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
+      const targetField = allFields.find(f => f.name === 'Stammeszugehörigkeit' || f.name === 'Gruppenzugehörigkeit');
+      if (!targetField) return;
+
+      const fieldId = targetField.id;
+      const currentGroups = this.groups();
+      const unassigned = this.$anmeldungen();
+      const totalToUpdate = currentGroups.flat().length + unassigned.length;
+      let processed = 0;
+
+      this.$progress.set(0.01);
+
+      // sequential processing for "slow" mode
+      for (let i = 0; i < currentGroups.length; i++) {
+        const groupName = `Stamm ${i + 1}`;
+        for (const member of currentGroups[i]) {
+          await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: groupName }));
+          processed++;
+          this.$progress.set(processed / totalToUpdate);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Artificial Delay
+        }
+      }
+
+      for (const member of unassigned) {
+        await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: null }));
+        processed++;
+        this.$progress.set(processed / totalToUpdate);
+        await new Promise(resolve => setTimeout(resolve, 500)); // Artificial Delay
+      }
+
+      alert('Langsamer Suchlauf abgeschlossen!');
+    } catch (err) {
+      console.error("Fehler im langsamen Modus", err);
+    } finally {
+      this.$progress.set(0);
+    }
+  }
+
+  loadGroups() {
+    const weekId = this.formGroup.value.selectedWeek;
+    if (!weekId) return;
+    const savedData = localStorage.getItem(`groups_week_${weekId}`);
+    if (!savedData) {
+      alert('Keine gespeicherten Gruppen gefunden.');
+      return;
+    }
+    const allParticipants = [...this.$anmeldungen(), ...this.groups().flat()];
+    const savedGroupIds: number[][] = JSON.parse(savedData);
+    const flatSavedIds = savedGroupIds.flat();
+    const newGroups: AnmeldungenViewModel[][] = savedGroupIds.map(ids =>
+      allParticipants.filter(p => ids.includes(p.id))
+    );
+    const unassigned = allParticipants.filter(p => !flatSavedIds.includes(p.id));
+    this.groups.set(newGroups);
+    this.$anmeldungen.set(unassigned);
+  }
+
+  loadGroupsServer() {
+    const allParticipants = [...this.$anmeldungen(), ...this.groups().flat()];
+    const newGroups = Array.from({ length: 8 }, () => [] as AnmeldungenViewModel[]);
+    const remainingInMain: AnmeldungenViewModel[] = [];
+    allParticipants.forEach(p => {
+      const groupField = p.fields.find(f =>
+        f.name === 'Stammeszugehörigkeit' || f.name === 'Gruppenzugehörigkeit'
+      );
+      const val = groupField?.value;
+      if (val && typeof val === 'string') {
+        const match = val.match(/\d+/);
+        const groupNum = match ? parseInt(match[0], 10) : null;
+        if (groupNum !== null && groupNum >= 1 && groupNum <= 8) {
+          newGroups[groupNum - 1].push(p);
+        } else {
+          remainingInMain.push(p);
+        }
+      } else {
+        remainingInMain.push(p);
+      }
     });
+    this.groups.set(newGroups);
+    this.$anmeldungen.set(remainingInMain);
   }
 
-  // 3. Add to target signal
-  if (event.to === 'main') {
-    this.$anmeldungen.update(list => [...list, movedItem!]);
-  } else {
-    this.groups.update(gs => {
-      gs[Number(event.to)].push(movedItem!);
-      return [...gs];
-    });
+  onDrop(event: { item: any, from: string, to: string, oldIndex: number, newIndex: number }) {
+    const personId = Number(event.item.getAttribute('data-id'));
+    let movedItem: AnmeldungenViewModel | undefined;
+
+    if (event.from === 'main') {
+      movedItem = this.$anmeldungen().find(p => p.id === personId);
+    } else {
+      movedItem = this.groups()[Number(event.from)].find(p => p.id === personId);
+    }
+    if (!movedItem) return;
+    if (event.from === 'main') {
+      this.$anmeldungen.update(list => list.filter(p => p.id !== personId));
+    } else {
+      this.groups.update(gs => {
+        gs[Number(event.from)] = gs[Number(event.from)].filter(p => p.id !== personId);
+        return [...gs];
+      });
+    }
+    if (event.to === 'main') {
+      this.$anmeldungen.update(list => [...list, movedItem!]);
+    } else {
+      this.groups.update(gs => {
+        gs[Number(event.to)].push(movedItem!);
+        return [...gs];
+      });
+    }
   }
-}
+
+
+  getGenderCounts(group: AnmeldungenViewModel[]) {
+    return {
+      boys: group.filter(p => p.personFields?.sexId === 1).length,
+      girls: group.filter(p => p.personFields?.sexId === 2).length
+    };
+  }
+
+  getAgeThisYear(birthday: any): number | null {
+    if (!birthday) return null;
+    const birthDate = parseISO(String(birthday));
+    if (!isValid(birthDate)) return null;
+
+    const currentYear = new Date().getFullYear();
+    return currentYear - birthDate.getFullYear();
+  }
+
+  getAverageAge(group: AnmeldungenViewModel[]): number {
+    if (group.length === 0) return 0;
+
+    const totalAge = group.reduce((sum, member) => {
+      const age = this.getAgeThisYear(member.personFields?.birthday);
+      return sum + (age || 0);
+    }, 0);
+
+    return Math.round(totalAge / group.length);
+  }
 }

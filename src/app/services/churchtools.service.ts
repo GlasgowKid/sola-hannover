@@ -92,4 +92,15 @@ export class ChurchtoolsService {
       )
     );
   }
+  updateGroupMemberFields(groupId: number, personId: number, fieldData: Record<number, any>): Observable<GroupMember> {
+    return this.loggedIn$.pipe(
+      switchMap((loggedIn) => 
+        loggedIn
+          ? from(churchtoolsClient.patch<GroupMember>(`/groups/${groupId}/members/${personId}`, {
+              fields: fieldData
+            }))
+          : throwError(() => new Error("Not logged in"))
+      )
+    );
+  }
 }

@@ -1,7 +1,7 @@
 <div class="container d-flex flex-column mt-5">
   <div class="mb-3 d-flex justify-content-end">
     <button class="btn btn-outline-primary" (click)="toggleView()">
-      {{ view() === 'admin' ? 'Teilnehmerliste zeigen' : 'Admin-Ansicht zeigen' }}
+      {{ view() === 'participants' ? 'Gruppenzuteilung' : 'Teilnehmerliste' }}
     </button>
   </div>
   <div [formGroup]="formGroup" class="input-group mb-3">
@@ -32,7 +32,7 @@
       </select>
     }
   </div>
-  @if (view() === 'admin') {
+  @if (view() === 'participants') {
     @if($anmeldungen(); as anmeldungen) {
       <ngx-datatable
         #datatable
@@ -179,20 +179,26 @@
     }
   } @else {
     <div class="row mt-4">
-    <div class="col-md-4">
+    <div class="col-lg-2.5 col-md-3"> 
       <div class="card shadow-sm h-100">
         <div class="card-header bg-primary text-white">Alle Teilnehmer</div>
         
         <div class="card-body p-2" sortable data-list-id="main" (onDrop)="onDrop($event)" style="min-height: 400px; background: #fafafa;">
           @for (p of $anmeldungen(); track p.id) {
-            <div class="p-3 mb-2 border rounded bg-white shadow-sm cursor-move" [attr.data-id]="p.id">
-              <strong>
+            <div 
+              class="p-2 mb-1 border rounded shadow-sm cursor-move overflow-hidden {{ getGenderClass(p) }}" 
+              [attr.data-id]="p.id" 
+              style="font-size: 0.85rem;"
+            >
+              <strong class="d-block text-truncate">
                 {{ p.person.domainAttributes.firstName }} 
                 {{ p.person.domainAttributes.lastName }}
-                <small class="text-muted">(#{{ p.id }})</small>
               </strong>
+              @if (showIds()) {
+                <small class="text-muted">#{{ p.id }}</small>
+              }
               <div class="small text-muted">
-                {{ $any(p.personFields?.birthday) | date : 'dd.MM.yyyy' }}
+                Alter: {{ getAgeThisYear(p.personFields?.birthday) }}
               </div>
             </div>
           }
@@ -200,23 +206,43 @@
       </div>
     </div>
 
-    <div class="col-md-8">
+    <div class="col-md-9">
       <div class="row g-3">
         @for (group of groups(); track $index) {
-          <div class="col-md-6">
+          <div class="col-lg-3 col-md-4 col-sm-6">
             <div class="card border-primary">
-              <div class="card-header py-1 bg-light">Gruppe {{ $index + 1 }}</div>
+              <div class="card-header py-1 bg-light d-flex justify-content-between align-items-center">
+                <div>
+                  <span>Gruppe {{ $index + 1 }}</span>
+                  <small class="text-muted ms-2">
+                    (Ø {{ getAverageAge(group) }})
+                  </small>
+                </div>
+                
+                @let counts = getGenderCounts(group);
+                <small class="fw-bold">
+                  <span class="text-primary">{{ counts.boys }}</span>
+                  <span class="text-muted"> / </span>
+                  <span class="text-danger">{{ counts.girls }}</span>
+                </small>
+              </div>
               
               <div class="card-body p-2" sortable [attr.data-list-id]="$index" (onDrop)="onDrop($event)" style="min-height: 120px; background: #fff;">
                 @for (item of group; track item.id) {
-                  <div class="p-2 mb-1 bg-white border rounded shadow-sm cursor-move" [attr.data-id]="item.id">
+                  <div 
+                    class="p-2 mb-1 border rounded shadow-sm cursor-move {{ getGenderClass(item) }}" 
+                    [attr.data-id]="item.id" 
+                    style="font-size: 0.85rem;"
+                  >
                     <strong>
                       {{ item.person.domainAttributes.firstName }} 
                       {{ item.person.domainAttributes.lastName }}
-                      <small class="text-muted">(#{{ item.id }})</small>
                     </strong>
+                    @if (showIds()) {
+                      <small class="text-muted">#{{ item.id }}</small>
+                    }
                     <div class="small text-muted">
-                      {{ $any(item.personFields?.birthday) | date : 'dd.MM.yyyy' }}
+                      Alter: {{ getAgeThisYear(item.personFields?.birthday) }}
                     </div>
                   </div>
                 }
@@ -226,15 +252,60 @@
         }
       </div>
       <br>
-      <div class="mb-3 d-flex justify-content-end gap-2">
-        <button class="btn btn-outline-success" (click)="saveGroups()">
-          Gruppen speichern
+      <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+  <div class="d-flex align-items-center">
+    <div class="form-check form-switch px-4">
+      <input class="form-check-input" type="checkbox" role="switch" id="idToggle" 
+             [checked]="showIds()" (change)="toggleIds()">
+      <label class="form-check-label fw-bold text-muted" for="idToggle">
+        <i class="bi bi-bug me-1"></i> Debug Info
+      </label>
+    </div>
+  </div>
+
+  <div class="d-flex gap-4">
+    <div class="btn-group shadow-sm" role="group" aria-label="Local storage actions">
+      <button class="btn btn-outline-secondary" (click)="loadGroups()" title="Vom Browser laden">
+        <i class="bi bi-arrow-clockwise me-1"></i> Entwurf laden
+      </button>
+      <button class="btn btn-outline-secondary" (click)="saveGroups()" title="Im Browser merken">
+        <i class="bi bi-save me-1"></i> Zwischenspeichern
+      </button>
+    </div>
+
+    <div class="btn-group shadow-sm" role="group" aria-label="Server actions">
+      <button class="btn btn-info text-white" (click)="loadGroupsServer()">
+        <i class="bi bi-cloud-download me-1"></i> Server laden
+      </button>
+      @if (showIds()) {
+        <button class="btn btn-warning" (click)="saveGroupsServerSlow()" title="Langsames Speichern (Debug)">
+          <i class="bi bi-hourglass-split me-1"></i> Slow Save
         </button>
-        <button class="btn btn-outline-info" (click)="loadGroups()">
-          Gruppen laden
-        </button>
-      </div>
+      }
+      <button class="btn btn-success" (click)="saveGroupsServer()">
+        <i class="bi bi-cloud-upload me-1"></i> Final speichern
+      </button>
+    </div>
+  </div>
+</div>
     </div>
   </div>
   }
 </div>
+@if ($progress() > 0) {
+  <div class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
+       style="background: rgba(0,0,0,0.5); z-index: 9999;">
+    <div class="card p-4 shadow-lg text-center" style="min-width: 300px;">
+      <div class="spinner-border text-primary mb-3" role="status"></div>
+      <h5 class="mb-2">Speichere Daten...</h5>
+      <p class="text-muted small">Bitte das Fenster nicht schließen.</p>
+      
+      <div class="progress" style="height: 10px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+             role="progressbar" 
+             [style.width.%]="$progress() * 100">
+        </div>
+      </div>
+    </div>
+  </div>
+}
