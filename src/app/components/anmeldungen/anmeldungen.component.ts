@@ -446,4 +446,26 @@ export class AnmeldungenComponent {
 
     return Math.round(totalAge / group.length);
   }
+
+
+  searchTerm = signal<string>('');
+
+  filteredParticipants = computed(() => {
+    const query = this.searchTerm().toLowerCase();
+    const all = this.$anmeldungen(); // This is your original list signal
+
+    if (!query) return all;
+
+    return all.filter(p =>
+      p.person.domainAttributes.firstName.toLowerCase().includes(query) ||
+      p.person.domainAttributes.lastName.toLowerCase().includes(query) ||
+      p.id.toString().includes(query)
+    );
+  });
+
+  // 3. Helper method to update the signal from the template
+  updateSearch(event: Event) {
+    const element = event.target as HTMLInputElement;
+    this.searchTerm.set(element.value);
+  }
 }
