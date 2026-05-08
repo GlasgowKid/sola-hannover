@@ -1,7 +1,7 @@
 <div class="container d-flex flex-column mt-5">
   <div class="mb-3 d-flex justify-content-end">
     <button class="btn btn-outline-primary" (click)="toggleView()">
-      {{ view() === 'participants' ? 'Gruppenzuteilung' : 'Teilnehmerliste' }}
+      {{ view() === 'participants' ? 'Stammeszuteilung' : 'Teilnehmerliste' }}
     </button>
   </div>
   <div [formGroup]="formGroup" class="input-group mb-3">
@@ -174,9 +174,11 @@
             @if (showIds()) {
             <small class="text-muted">#{{ p.id }}</small>
             }
-            <div class="small text-muted">
-              Alter: {{ getAgeThisYear(p.personFields?.birthday) }}
-            </div>
+            @if (showAge()) {
+              <div class="small text-muted">
+                Alter: {{ getAgeThisYear(p.personFields?.birthday) }}
+              </div>
+            }
           </div>
           } @empty {
           <div class="text-center text-muted mt-4 small">
@@ -194,7 +196,7 @@
           <div class="card border-primary">
             <div class="card-header py-1 bg-light d-flex justify-content-between align-items-center">
               <div>
-                <span>Gruppe {{ $index + 1 }}</span>
+                <span>Stamm {{ $index + 1 }}</span>
                 <small class="text-muted ms-2">
                   (Ø {{ getAverageAge(group) }})
                 </small>
@@ -220,9 +222,11 @@
                 @if (showIds()) {
                 <small class="text-muted">#{{ item.id }}</small>
                 }
-                <div class="small text-muted">
-                  Alter: {{ getAgeThisYear(item.personFields?.birthday) }}
-                </div>
+                @if (showAge()) {
+                  <div class="small text-muted">
+                    Alter: {{ getAgeThisYear(item.personFields?.birthday) }}
+                  </div>
+                }
               </div>
               }
             </div>
@@ -241,7 +245,15 @@
             </label>
           </div>
         </div>
-
+        <div class="d-flex align-items-center">
+          <div class="form-check form-switch px-4">
+            <input class="form-check-input" type="checkbox" role="switch" id="ageToggle" [checked]="showAge()"
+              (change)="toggleAge()">
+            <label class="form-check-label fw-bold text-muted" for="ageToggle">
+              <i class="bi bi-bug me-1"></i> Show Age
+            </label>
+          </div>
+        </div>
         <div class="d-flex gap-4">
           <div class="btn-group shadow-sm" role="group" aria-label="Local storage actions">
             <button class="btn btn-outline-secondary" (click)="loadGroups()" title="Vom Browser laden">

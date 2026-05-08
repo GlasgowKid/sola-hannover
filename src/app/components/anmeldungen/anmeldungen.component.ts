@@ -53,6 +53,11 @@ export class AnmeldungenComponent {
     this.showIds.update(v => !v);
   }
 
+  showAge = signal<boolean>(false);
+  toggleAge() {
+    this.showAge.update(v => !v);
+  }
+
   readonly $groupTypes = toSignal(this.churchToolsService.getGroupTypes());
   readonly $jahre = toSignal(this.churchToolsService.getJahre());
 
@@ -242,59 +247,55 @@ export class AnmeldungenComponent {
   async saveGroupsServer() {
     const groupId = this.formGroup.value.selectedWeek;
     if (!groupId || this.$progress() > 0) return;
-
     try {
       const allFields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
       const targetField = allFields.find(f => f.name === 'Stammeszugehörigkeit' || f.name === 'Gruppenzugehörigkeit');
-
       if (!targetField) {
         alert("Zielfeld nicht gefunden!");
         return;
       }
-
       const fieldId = targetField.id;
+      const fieldName = targetField.name;
       this.$progress.set(0.01);
-
-      // 1. Collect all individual update functions (without executing them yet)
       const tasks: (() => Promise<void>)[] = [];
-
-      // Assigned groups
       this.groups().forEach((group, i) => {
         const groupName = `Stamm ${i + 1}`;
         group.forEach(member => {
-          tasks.push(async () => {
-            const updated = await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: groupName }));
-            this.groups.update(gs => {
-              const newGs = [...gs];
-              newGs[i] = newGs[i].map(m => m.id === member.id ? { ...m, fields: updated.fields } : m);
-              return newGs;
+          const currentServerVal = member.fields.find(f => f.id === fieldId || f.name === fieldName)?.value;
+          if (currentServerVal !== groupName) {
+            tasks.push(async () => {
+              const updated = await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: groupName }));
+              this.groups.update(gs => {
+                const newGs = [...gs];
+                newGs[i] = newGs[i].map(m => m.id === member.id ? { ...m, fields: updated.fields } : m);
+                return newGs;
+              });
             });
-          });
+          }
         });
       });
-
-      // Unassigned members
       this.$anmeldungen().forEach(member => {
-        tasks.push(async () => {
-          const updated = await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: null }));
-          this.$anmeldungen.update(list => list.map(m => m.id === member.id ? { ...m, fields: updated.fields } : m));
-        });
+        const currentServerVal = member.fields.find(f => f.id === fieldId || f.name === fieldName)?.value;
+        if (currentServerVal !== null && currentServerVal !== '') {
+          tasks.push(async () => {
+            const updated = await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: null }));
+            this.$anmeldungen.update(list => list.map(m => m.id === member.id ? { ...m, fields: updated.fields } : m));
+          });
+        }
       });
-
-      // 2. Execute in chunks (Rate Limiting)
-      const CHUNK_SIZE = 15; // Adjust this number to control the rate limit
+      if (tasks.length === 0) {
+        alert('Alles bereits auf dem neuesten Stand!');
+        this.$progress.set(0);
+        return;
+      }
+      const CHUNK_SIZE = 15;
       for (let i = 0; i < tasks.length; i += CHUNK_SIZE) {
         const chunk = tasks.slice(i, i + CHUNK_SIZE);
         await Promise.all(chunk.map(task => task()));
-
-        // Update progress bar
         this.$progress.set((i + chunk.length) / tasks.length);
-
-        // Optional: Add a small delay between chunks if the server is very sensitive
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-
-      alert('Speichern erfolgreich abgeschlossen!');
+      alert(`${tasks.length} Änderungen erfolgreich gespeichert!`);
     } catch (err) {
       console.error("Speicherfehler", err);
       alert("Ein Fehler ist aufgetreten beim Speichern.");
@@ -302,8 +303,6 @@ export class AnmeldungenComponent {
       this.$progress.set(0);
     }
   }
-
-  // Add this method to your AnmeldungenComponent class
   async saveGroupsServerSlow() {
     const groupId = this.formGroup.value.selectedWeek;
     if (!groupId || this.$progress() > 0) return;
@@ -312,36 +311,57 @@ export class AnmeldungenComponent {
       const allFields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
       const targetField = allFields.find(f => f.name === 'Stammeszugehörigkeit' || f.name === 'Gruppenzugehörigkeit');
       if (!targetField) return;
-
       const fieldId = targetField.id;
+      const fieldName = targetField.name;
       const currentGroups = this.groups();
       const unassigned = this.$anmeldungen();
-      const totalToUpdate = currentGroups.flat().length + unassigned.length;
-      let processed = 0;
-
-      this.$progress.set(0.01);
-
-      // sequential processing for "slow" mode
-      for (let i = 0; i < currentGroups.length; i++) {
+      const updates: { member: AnmeldungenViewModel, newValue: string | null, targetGroupIndex?: number }[] = [];
+      currentGroups.forEach((group, i) => {
         const groupName = `Stamm ${i + 1}`;
-        for (const member of currentGroups[i]) {
-          await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: groupName }));
-          processed++;
-          this.$progress.set(processed / totalToUpdate);
-          await new Promise(resolve => setTimeout(resolve, 500)); // Artificial Delay
+        group.forEach(member => {
+          const currentServerVal = member.fields.find(f => f.id === fieldId || f.name === fieldName)?.value;
+          if (currentServerVal !== groupName) {
+            updates.push({ member, newValue: groupName, targetGroupIndex: i });
+          }
+        });
+      });
+      unassigned.forEach(member => {
+        const currentServerVal = member.fields.find(f => f.id === fieldId || f.name === fieldName)?.value;
+        if (currentServerVal !== null && currentServerVal !== '') {
+          updates.push({ member, newValue: null });
         }
+      });
+      if (updates.length === 0) {
+        alert('Keine Änderungen zum Speichern gefunden.');
+        return;
       }
-
-      for (const member of unassigned) {
-        await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: null }));
+      this.$progress.set(0.01);
+      let processed = 0;
+      for (const task of updates) {
+        const updated = await firstValueFrom(
+          this.churchToolsService.updateGroupMemberFields(groupId, task.member.personId, { [fieldId]: task.newValue })
+        );
+        if (task.targetGroupIndex !== undefined) {
+          this.groups.update(gs => {
+            const newGs = [...gs];
+            newGs[task.targetGroupIndex!] = newGs[task.targetGroupIndex!].map(m =>
+              m.id === task.member.id ? { ...m, fields: updated.fields } : m
+            );
+            return newGs;
+          });
+        } else {
+          this.$anmeldungen.update(list => list.map(m =>
+            m.id === task.member.id ? { ...m, fields: updated.fields } : m
+          ));
+        }
         processed++;
-        this.$progress.set(processed / totalToUpdate);
-        await new Promise(resolve => setTimeout(resolve, 500)); // Artificial Delay
+        this.$progress.set(processed / updates.length);
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
-
-      alert('Langsamer Suchlauf abgeschlossen!');
+      alert(`${updates.length} Änderungen im langsamen Modus abgeschlossen!`);
     } catch (err) {
       console.error("Fehler im langsamen Modus", err);
+      alert("Ein Fehler ist im langsamen Modus aufgetreten.");
     } finally {
       this.$progress.set(0);
     }
