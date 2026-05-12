@@ -232,7 +232,6 @@ export class AnmeldungenComponent {
     return `groups_assignment_${this.formGroup.value.selectedWeek}`;
   }
 
-  // 2. The handler for the Sortable Directive's onDrop event
   saveGroups() {
     const weekId = this.formGroup.value.selectedWeek;
     if (!weekId) return;
@@ -414,27 +413,33 @@ export class AnmeldungenComponent {
   onDrop(event: { item: any, from: string, to: string, oldIndex: number, newIndex: number }) {
     const personId = Number(event.item.getAttribute('data-id'));
     let movedItem: AnmeldungenViewModel | undefined;
-
     if (event.from === 'main') {
       movedItem = this.$anmeldungen().find(p => p.id === personId);
-    } else {
-      movedItem = this.groups()[Number(event.from)].find(p => p.id === personId);
-    }
-    if (!movedItem) return;
-    if (event.from === 'main') {
       this.$anmeldungen.update(list => list.filter(p => p.id !== personId));
     } else {
+      const fromIdx = Number(event.from);
+      movedItem = this.groups()[fromIdx].find(p => p.id === personId);
       this.groups.update(gs => {
-        gs[Number(event.from)] = gs[Number(event.from)].filter(p => p.id !== personId);
-        return [...gs];
+        const newGs = [...gs];
+        newGs[fromIdx] = newGs[fromIdx].filter(p => p.id !== personId);
+        return newGs;
       });
     }
+    if (!movedItem) return;
     if (event.to === 'main') {
-      this.$anmeldungen.update(list => [...list, movedItem!]);
+      this.$anmeldungen.update(list => {
+        const newList = [...list];
+        newList.splice(event.newIndex, 0, movedItem!);
+        return newList;
+      });
     } else {
+      const toIdx = Number(event.to);
       this.groups.update(gs => {
-        gs[Number(event.to)].push(movedItem!);
-        return [...gs];
+        const newGs = [...gs];
+        const targetGroup = [...newGs[toIdx]];
+        targetGroup.splice(event.newIndex, 0, movedItem!);
+        newGs[toIdx] = targetGroup;
+        return newGs;
       });
     }
   }
@@ -458,12 +463,10 @@ export class AnmeldungenComponent {
 
   getAverageAge(group: AnmeldungenViewModel[]): number {
     if (group.length === 0) return 0;
-
     const totalAge = group.reduce((sum, member) => {
       const age = this.getAgeThisYear(member.personFields?.birthday);
       return sum + (age || 0);
     }, 0);
-
     return Math.round(totalAge / group.length);
   }
 
@@ -483,9 +486,20 @@ export class AnmeldungenComponent {
     );
   });
 
-  // 3. Helper method to update the signal from the template
   updateSearch(event: Event) {
     const element = event.target as HTMLInputElement;
     this.searchTerm.set(element.value);
+  }
+
+  getAgeVariance(group: AnmeldungenViewModel[]): number {
+    if (group.length <= 1) return 0;
+    const ages = group
+      .map(m => this.getAgeThisYear(m.personFields?.birthday))
+      .filter((age): age is number => age !== null);
+    if (ages.length === 0) return 0;
+    const mean = ages.reduce((a, b) => a + b, 0) / ages.length;
+    const squaredDiffs = ages.map(age => Math.pow(age - mean, 2));
+    const variance = squaredDiffs.reduce((a, b) => a + b, 0) / ages.length;
+    return Math.round(variance * 10) / 10;
   }
 }
