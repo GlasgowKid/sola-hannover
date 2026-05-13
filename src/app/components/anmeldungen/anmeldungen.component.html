@@ -1,4 +1,4 @@
-<div class="container d-flex flex-column mt-5">
+<div class="container d-flex flex-column">
   <div [formGroup]="formGroup" class="input-group mb-3">
     @if ($jahre(); as jahre) {
     <select formControlName="selectedYear" class="form-select" [class.text-secondary]="!formGroup.value.selectedYear">

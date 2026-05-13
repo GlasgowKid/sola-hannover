@@ -1,25 +1,23 @@
-<div class="d-flex" style="min-height: 100vh;">
-  <!-- Sidebar adjusted for 100px -->
-  <div class="bg-dark text-white p-2 shadow d-flex flex-column align-items-center" style="width: 100px; flex-shrink: 0;">
+<div class="d-flex w-100 position-fixed start-0 overflow-hidden" style="top: 56px; height: calc(100vh - 56px);">
+  <div class="text-white p-2 shadow d-flex flex-column align-items-center"
+    style="width: 100px; flex-shrink: 0; background-color: #0E204B;">
     <div class="text-center mb-3 mt-2">
       <span class="fw-bold" style="font-size: 0.75rem; display: block; line-height: 1.2;">SOLA Admin</span>
     </div>
-    
+
     <hr class="w-100 border-secondary">
-    
+
     <ul class="nav nav-pills flex-column mb-auto w-100">
       <li class="nav-item mb-3">
-        <a routerLink="/anmeldungen" 
-           routerLinkActive="active" 
-           class="nav-link text-white d-flex flex-column align-items-center px-0 text-center">
+        <a routerLink="/anmeldungen" routerLinkActive="active"
+          class="nav-link text-white d-flex flex-column align-items-center px-0 text-center">
           <i class="bi bi-people-fill fs-4 mb-1"></i>
           <span style="font-size: 0.7rem;">Anmeldungen</span>
         </a>
       </li>
       <li class="nav-item mb-3">
-        <a routerLink="/management" 
-           routerLinkActive="active" 
-           class="nav-link text-white d-flex flex-column align-items-center px-0 text-center">
+        <a routerLink="/management" routerLinkActive="active"
+          class="nav-link text-white d-flex flex-column align-items-center px-0 text-center">
           <i class="bi bi-gear-fill fs-4 mb-1"></i>
           <span style="font-size: 0.7rem;">Management</span>
         </a>
