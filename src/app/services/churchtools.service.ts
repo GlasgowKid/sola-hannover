@@ -46,6 +46,21 @@ export class ChurchtoolsService {
     );
   }
 
+  getJahreManaged(yearId?: number): Observable<Group[]> {
+    if (yearId) {
+      return this.groupTypeFilter("Solawoche").pipe(
+        switchMap(params => from(churchtoolsClient.get<DomainObjectGroup[]>(`/groups/${yearId}/children`, params))),
+        map(dogs => dogs.map(dog => dog.domainIdentifier)),
+        switchMap(ids => ids.length > 0 ? from(churchtoolsClient.get<Group[]>(`/groups`, { ids })) : of([])),
+      );
+    } else {
+      return this.groupTypeFilter("Solawoche").pipe(
+        switchMap(params => from(churchtoolsClient.get<Group[]>("/groups", params))),
+        take(1)
+      );
+    }
+  }
+
   getSolawochen(yearGroupId?: number): Observable<Group[]> {
     if (yearGroupId) {
       return this.groupTypeFilter("Solawoche").pipe(
