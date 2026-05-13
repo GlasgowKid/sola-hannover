@@ -10,11 +10,6 @@ import { GroupMember, GroupMemberFieldGroup } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { SortableDirective } from '../../directives/sortable.directive';
 
-interface GroupWrapper {
-  id: string;
-  participants: AnmeldungenViewModel[];
-}
-
 type AnmeldungenViewModel = GroupMember & {};
 
 @Component({
@@ -40,8 +35,6 @@ export class StammesManagementComponent {
   toggleView() {
     this.view.update(v => v === 'participants' ? 'groups' : 'participants');
   }
-
-  availableWrappers = signal<GroupWrapper[]>([{ id: 'wrap-1', participants: [] }]);
 
 
   showIds = signal<boolean>(false);
@@ -291,14 +284,6 @@ export class StammesManagementComponent {
       if (event.from === 'main') {
         movedParticipant = this.$anmeldungen().find(p => p.id === personId);
         this.$anmeldungen.update(list => list.filter(p => p.id !== personId));
-      } else if (event.from.startsWith('wrap-')) {
-        this.availableWrappers.update(ws => ws.map(w => {
-          if (w.id === event.from) {
-            movedParticipant = w.participants.find(p => p.id === personId);
-            w.participants = w.participants.filter(p => p.id !== personId);
-          }
-          return w;
-        }));
       } else {
         const fromIdx = Number(event.from);
         movedParticipant = this.groups()[fromIdx].find(p => p.id === personId);
@@ -316,13 +301,6 @@ export class StammesManagementComponent {
           newList.splice(event.newIndex, 0, movedParticipant!);
           return newList;
         });
-      } else if (event.to.startsWith('wrap-')) {
-        this.availableWrappers.update(ws => ws.map(w => {
-          if (w.id === event.to) {
-            w.participants.splice(event.newIndex, 0, movedParticipant!);
-          }
-          return w;
-        }));
       } else {
         const toIdx = Number(event.to);
         this.groups.update(gs => {
@@ -333,12 +311,6 @@ export class StammesManagementComponent {
           return newGs;
         });
       }
-    }
-    else if (isWrapper && event.to !== 'wrappers') {
-      this.availableWrappers.update(ws => {
-        const newId = `wrap-${Date.now()}`;
-        return [...ws, { id: newId, participants: [] }];
-      });
     }
   }
 

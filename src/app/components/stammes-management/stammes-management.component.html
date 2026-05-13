@@ -136,37 +136,6 @@
                 </div>
             </div>
 
-            <div class="d-flex align-items-center gap-2 px-3 border-start border-end">
-                <small class="fw-bold text-muted text-uppercase" style="font-size: 0.7rem;">Untergruppen:</small>
-                <div class="d-flex gap-2" sortable data-list-id="wrappers" (onDrop)="onDrop($event)">
-                    @for (wrap of availableWrappers(); track wrap.id) {
-                    <div class="card border-dashed p-1 bg-light d-flex flex-column align-items-center justify-content-center"
-                        [attr.data-id]="wrap.id" style="min-width: 100px; border: 2px dashed #ccc; cursor: grab;">
-                        <div class="w-100 mt-1" sortable [attr.data-list-id]="wrap.id" (onDrop)="onDrop($event)"
-                            style="min-height: 30px;">
-                            @for (p of wrap.participants; track p.id) {
-                            <div class="p-2 mb-1 border rounded shadow-sm cursor-move overflow-hidden {{ getGenderClass(p) }}"
-                                [attr.data-id]="p.id" style="font-size: 0.85rem;">
-                                <strong class="d-block text-truncate">
-                                    {{ p.person.domainAttributes.firstName }}
-                                    {{ p.person.domainAttributes.lastName }}
-                                </strong>
-                                @if (showIds()) {
-                                <small class="text-muted">#{{ p.id }}</small>
-                                }
-                                @if (showAge()) {
-                                <div class="small text-muted">
-                                    Alter: {{ getAgeThisYear(p.personFields?.birthday) }}
-                                </div>
-                                }
-                            </div>
-                            }
-                        </div>
-                    </div>
-                    }
-                </div>
-            </div>
-
             <div class="d-flex gap-4 pb-2">
                 <div class="btn-group shadow-sm" role="group">
                     <button class="btn btn-outline-secondary" (click)="loadGroups()">
