@@ -55,7 +55,7 @@ export class StammesManagementComponent {
   }
 
   readonly $groupTypes = toSignal(this.churchToolsService.getGroupTypes());
-  readonly $jahre = toSignal(this.churchToolsService.getJahre());
+  readonly $jahre = toSignal(this.churchToolsService.getJahreManaged(73));
 
   private readonly $selectedWeek = toSignal(this.formGroup.controls.selectedWeek.valueChanges);
 

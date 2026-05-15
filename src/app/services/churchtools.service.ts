@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { BehaviorSubject, from, map, Observable, of, ReplaySubject, switchMap, take, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { DomainObjectGroup, Group, GroupMember, GroupMemberField, GroupMemberFieldGroup, GroupType } from '../../utils/ct-types';
+import { DomainObjectGroup, Group, GroupMember, GroupMemberField, GroupMemberFieldGroup, GroupType, DomainObject } from '../../utils/ct-types';
 
 @Injectable({
   providedIn: 'root',
@@ -47,18 +47,11 @@ export class ChurchtoolsService {
   }
 
   getJahreManaged(yearId?: number): Observable<Group[]> {
-    if (yearId) {
-      return this.groupTypeFilter("Solawoche").pipe(
+    return this.groupTypeFilter("Jahr").pipe(
         switchMap(params => from(churchtoolsClient.get<DomainObjectGroup[]>(`/groups/${yearId}/children`, params))),
         map(dogs => dogs.map(dog => dog.domainIdentifier)),
         switchMap(ids => ids.length > 0 ? from(churchtoolsClient.get<Group[]>(`/groups`, { ids })) : of([])),
-      );
-    } else {
-      return this.groupTypeFilter("Solawoche").pipe(
-        switchMap(params => from(churchtoolsClient.get<Group[]>("/groups", params))),
-        take(1)
-      );
-    }
+    );
   }
 
   getSolawochen(yearGroupId?: number): Observable<Group[]> {
