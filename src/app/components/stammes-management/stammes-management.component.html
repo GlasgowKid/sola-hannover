@@ -94,21 +94,7 @@
                             <div class="card-body p-2" sortable [attr.data-list-id]="$index" (onDrop)="onDrop($event)"
                                 style="min-height: 120px; background: #fff;">
                                 @for (item of group; track item.id) {
-                                <div class="p-2 mb-1 border rounded shadow-sm cursor-move {{ getGenderClass(item) }}"
-                                    [attr.data-id]="item.id" style="font-size: 0.85rem;">
-                                    <strong>
-                                        {{ item.person.domainAttributes.firstName }}
-                                        {{ item.person.domainAttributes.lastName }}
-                                    </strong>
-                                    @if (showIds()) {
-                                    <small class="text-muted">##{{ item.id }}</small>
-                                    }
-                                    @if (showAge()) {
-                                    <div class="small text-muted">
-                                        Alter: {{ getAgeThisYear(item.personFields?.birthday) }}
-                                    </div>
-                                    }
-                                </div>
+                                    <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: item }"></ng-container>
                                 }
                             </div>
                         </div>
@@ -140,29 +126,7 @@
                 <small class="fw-bold text-muted text-uppercase" style="font-size: 0.7rem;">Untergruppen:</small>
                 <div class="d-flex gap-2" sortable data-list-id="wrappers" (onDrop)="onDrop($event)">
                     @for (wrap of availableWrappers(); track wrap.id) {
-                    <div class="card border-dashed p-1 bg-light d-flex flex-column align-items-center justify-content-center"
-                        [attr.data-id]="wrap.id" style="min-width: 100px; border: 2px dashed #ccc; cursor: grab;">
-                        <div class="w-100 mt-1" sortable [attr.data-list-id]="wrap.id" (onDrop)="onDrop($event)"
-                            style="min-height: 30px;">
-                            @for (p of wrap.participants; track p.id) {
-                            <div class="p-2 mb-1 border rounded shadow-sm cursor-move overflow-hidden {{ getGenderClass(p) }}"
-                                [attr.data-id]="p.id" style="font-size: 0.85rem;">
-                                <strong class="d-block text-truncate">
-                                    {{ p.person.domainAttributes.firstName }}
-                                    {{ p.person.domainAttributes.lastName }}
-                                </strong>
-                                @if (showIds()) {
-                                <small class="text-muted">#{{ p.id }}</small>
-                                }
-                                @if (showAge()) {
-                                <div class="small text-muted">
-                                    Alter: {{ getAgeThisYear(p.personFields?.birthday) }}
-                                </div>
-                                }
-                            </div>
-                            }
-                        </div>
-                    </div>
+                        <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: wrap }"></ng-container>
                     }
                 </div>
             </div>
@@ -210,3 +174,33 @@
     </div>
 </div>
 }
+
+<ng-template #itemTemplate let-item>
+    @if (isParticipant(item)) {
+        <div class="p-2 mb-1 border rounded shadow-sm cursor-move {{ getGenderClass(item) }}"
+            [attr.data-id]="item.id" style="font-size: 0.85rem;">
+            <strong>
+                {{ item.person.domainAttributes.firstName }}
+                {{ item.person.domainAttributes.lastName }}
+            </strong>
+            @if (showIds()) {
+                <small class="text-muted">##{{ item.id }}</small>
+            }
+            @if (showAge()) {
+                <div class="small text-muted">
+                    Alter: {{ getAgeThisYear(item.personFields?.birthday) }}
+                </div>
+            }
+        </div>
+    } @else {
+        <div class="card border-dashed p-1 bg-light d-flex flex-column align-items-center justify-content-center"
+            [attr.data-id]="item.id" style="min-width: 100px; border: 2px dashed #ccc; cursor: grab;">
+            <div class="w-100 mt-1" sortable [attr.data-list-id]="item.id" (onDrop)="onDrop($event)"
+                style="min-height: 30px;">
+                @for (p of item.participants; track p.id) {
+                    <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: p }"></ng-container>
+                }
+            </div>
+        </div>
+    }
+</ng-template>
