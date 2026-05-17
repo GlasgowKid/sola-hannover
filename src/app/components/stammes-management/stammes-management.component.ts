@@ -1,9 +1,9 @@
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal, HostListener } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
 import { isValid, parseISO } from 'date-fns';
-import { debounceTime, distinctUntilChanged, filter, switchMap, tap } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter, firstValueFrom, map, pairwise, startWith, switchMap, tap } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { SortableDirective } from '../../directives/sortable.directive';
@@ -31,6 +31,15 @@ export class StammesManagementComponent {
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly isDirty = signal<boolean>(false);
+
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.isDirty()) {
+      $event.returnValue = true;
+    }
+  }
+
   readonly formGroup = this.fb.group({
     selectedYear: this.fb.control<number | null>(null),
     selectedWeek: this.fb.control<number | null>(null),
@@ -38,7 +47,7 @@ export class StammesManagementComponent {
 
   groups = signal<AnmeldungenViewModel[][]>(Array.from({ length: 8 }, () => []));
 
-  availableWrappers = signal<GroupWrapper[]>([{ id: 'wrap-1', participants: [] }]);
+  availableWrappers = signal<AnmeldungenViewModel[]>([{ id: 'wrap-1', participants: [] }]);
 
 
   showIds = signal<boolean>(false);
@@ -51,6 +60,11 @@ export class StammesManagementComponent {
     this.showAge.update(v => !v);
   }
 
+  details = signal<boolean>(false);
+  toggleDetails() {
+    this.details.update(v => !v);
+  }
+
   isParticipant(item: AnmeldungenViewModel): item is Participant {
     return !('participants' in item);
   }
@@ -61,9 +75,23 @@ export class StammesManagementComponent {
   private readonly $selectedWeek = toSignal(this.formGroup.controls.selectedWeek.valueChanges);
 
   private readonly solawochen$ = this.formGroup.controls.selectedYear.valueChanges.pipe(
+    startWith(this.formGroup.controls.selectedYear.value),
+    pairwise(),
+    filter(([prev, next]) => {
+      if (this.isDirty() && next !== prev) {
+        const discard = confirm('Sie haben ungespeicherte Änderungen in der aktuellen Woche. Möchten Sie diese verwerfen?');
+        if (!discard) {
+          this.formGroup.controls.selectedYear.setValue(prev, { emitEvent: false });
+          return false;
+        }
+      }
+      return true;
+    }),
+    map(([prev, next]) => next),
     distinctUntilChanged(),
     debounceTime(1000),
     tap(() => {
+      this.isDirty.set(false);
       this.formGroup.controls.selectedWeek.reset();
       this.groups.set(Array.from({ length: 8 }, () => []));
     }),
@@ -72,9 +100,23 @@ export class StammesManagementComponent {
   );
 
   private readonly anmeldungen$ = this.formGroup.controls.selectedWeek.valueChanges.pipe(
+    startWith(this.formGroup.controls.selectedWeek.value),
+    pairwise(),
+    filter(([prev, next]) => {
+      if (this.isDirty() && next !== prev) {
+        const discard = confirm('Sie haben ungespeicherte Änderungen in der aktuellen Woche. Möchten Sie diese verwerfen?');
+        if (!discard) {
+          this.formGroup.controls.selectedWeek.setValue(prev, { emitEvent: false });
+          return false;
+        }
+      }
+      return true;
+    }),
+    map(([prev, next]) => next),
     distinctUntilChanged(),
     debounceTime(1000),
     tap(() => {
+      this.isDirty.set(false);
       this.groups.set(Array.from({ length: 8 }, () => []));
     }),
     filter((value): value is number => !!value),
@@ -115,13 +157,69 @@ export class StammesManagementComponent {
   saveGroups() {
     const weekId = this.formGroup.value.selectedWeek;
     if (!weekId) return;
-    const assignment = this.groups().map(group => group.map(p => p.id));
+    const serializeItem = (item: AnmeldungenViewModel): any => {
+      if (this.isParticipant(item)) {
+        return item.id;
+      } else {
+        return item.participants.map(p => serializeItem(p));
+      }
+    };
+    const assignment = this.groups().map(group => group.map(item => serializeItem(item)));
+    
     localStorage.setItem(`groups_week_${weekId}`, JSON.stringify(assignment));
+    this.isDirty.set(false);
     alert('Gruppen lokal gespeichert!');
   }
 
+  loadGroups() {
+    const weekId = this.formGroup.value.selectedWeek;
+    if (!weekId) return;
+
+    const savedData = localStorage.getItem(`groups_week_${weekId}`);
+    if (!savedData) {
+      alert('Keine gespeicherten Gruppen gefunden.');
+      return;
+    }
+    const allParticipants = this.expandParticipants([...this.$anmeldungen(), ...this.groups().flat()]);
+    const participantMap = new Map<number, Participant>(allParticipants.map(p => [p.id, p]));
+    let wrapCounter = 1;
+    const deserializeItem = (savedItem: any): AnmeldungenViewModel | null => {
+      if (Array.isArray(savedItem)) {
+        const children: AnmeldungenViewModel[] = savedItem
+          .map(child => deserializeItem(child))
+          .filter((child): child is AnmeldungenViewModel => child !== null);
+
+        const wrapper: GroupWrapper = {
+          id: `wrap-loaded-${wrapCounter++}-${Date.now()}`,
+          participants: children
+        };
+        return wrapper;
+      } else {
+        const participant = participantMap.get(Number(savedItem));
+        if (participant) {
+          participantMap.delete(Number(savedItem));
+          return participant;
+        }
+        return null;
+      }
+    };
+    const savedStructure: any[][] = JSON.parse(savedData);
+    const newGroups: AnmeldungenViewModel[][] = savedStructure.map(groupArray => {
+      if (!Array.isArray(groupArray)) return [];
+      return groupArray
+        .map(item => deserializeItem(item))
+        .filter((item): item is AnmeldungenViewModel => item !== null);
+    });
+    const unassigned: AnmeldungenViewModel[] = Array.from(participantMap.values());
+    this.groups.set(newGroups);
+    this.$anmeldungen.set(unassigned);
+    if (this.availableWrappers().length === 0) {
+      this.availableWrappers.set([{ id: `wrap-${Date.now()}`, participants: [] }]);
+    }
+    this.isDirty.set(false);
+  }
+
   async saveGroupsServer() {
-    /*
     const groupId = this.formGroup.value.selectedWeek;
     if (!groupId || this.$progress() > 0) return;
     try {
@@ -137,26 +235,29 @@ export class StammesManagementComponent {
       const tasks: (() => Promise<void>)[] = [];
       this.groups().forEach((group, i) => {
         const groupName = `Stamm ${i + 1}`;
-        group.forEach(member => {
-          const currentServerVal = member.fields.find(f => f.id === fieldId || f.name === fieldName)?.value;
+        const flatGroupParticipants = this.expandParticipants(group);
+        
+        flatGroupParticipants.forEach(member => {
+          const currentServerVal = member.fields?.find(f => f.id === fieldId || f.name === fieldName)?.value;
           if (currentServerVal !== groupName) {
             tasks.push(async () => {
-              const updated = await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: groupName }));
-              this.groups.update(gs => {
-                const newGs = [...gs];
-                newGs[i] = newGs[i].map(m => m.id === member.id ? { ...m, fields: updated.fields } : m);
-                return newGs;
-              });
+              const updated = await firstValueFrom(
+                this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: groupName })
+              );
+              this.groups.update(gs => gs.map(g => this.updateFieldsInTree(g, member.id, updated.fields)));
             });
           }
         });
       });
-      this.$anmeldungen().forEach(member => {
-        const currentServerVal = member.fields.find(f => f.id === fieldId || f.name === fieldName)?.value;
+      const flatUnassignedParticipants = this.expandParticipants(this.$anmeldungen());
+      flatUnassignedParticipants.forEach(member => {
+        const currentServerVal = member.fields?.find(f => f.id === fieldId || f.name === fieldName)?.value;
         if (currentServerVal !== null && currentServerVal !== '') {
           tasks.push(async () => {
-            const updated = await firstValueFrom(this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: null }));
-            this.$anmeldungen.update(list => list.map(m => m.id === member.id ? { ...m, fields: updated.fields } : m));
+            const updated = await firstValueFrom(
+              this.churchToolsService.updateGroupMemberFields(groupId, member.personId, { [fieldId]: null })
+            );
+            this.$anmeldungen.update(list => this.updateFieldsInTree(list, member.id, updated.fields));
           });
         }
       });
@@ -172,6 +273,7 @@ export class StammesManagementComponent {
         this.$progress.set((i + chunk.length) / tasks.length);
         await new Promise(resolve => setTimeout(resolve, 100));
       }
+      this.isDirty.set(false); 
       alert(`${tasks.length} Änderungen erfolgreich gespeichert!`);
     } catch (err) {
       console.error("Speicherfehler", err);
@@ -179,102 +281,91 @@ export class StammesManagementComponent {
     } finally {
       this.$progress.set(0);
     }
-      */
-  }
-  async saveGroupsServerSlow() {
-    /*
-      const groupId = this.formGroup.value.selectedWeek;
-      if (!groupId || this.$progress() > 0) return;
-  
-      try {
-        const allFields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
-        const targetField = allFields.find(f => f.name === 'Stammeszugehörigkeit' || f.name === 'Gruppenzugehörigkeit');
-        if (!targetField) return;
-        const fieldId = targetField.id;
-        const fieldName = targetField.name;
-        const currentGroups = this.groups();
-        const unassigned = this.$anmeldungen();
-        const updates: { member: AnmeldungenViewModel, newValue: string | null, targetGroupIndex?: number }[] = [];
-        currentGroups.forEach((group, i) => {
-          const groupName = `Stamm ${i + 1}`;
-          group.forEach(member => {
-            const currentServerVal = member.fields.find(f => f.id === fieldId || f.name === fieldName)?.value;
-            if (currentServerVal !== groupName) {
-              updates.push({ member, newValue: groupName, targetGroupIndex: i });
-            }
-          });
-        });
-        unassigned.forEach(member => {
-          const currentServerVal = member.fields.find(f => f.id === fieldId || f.name === fieldName)?.value;
-          if (currentServerVal !== null && currentServerVal !== '') {
-            updates.push({ member, newValue: null });
-          }
-        });
-        if (updates.length === 0) {
-          alert('Keine Änderungen zum Speichern gefunden.');
-          return;
-        }
-        this.$progress.set(0.01);
-        let processed = 0;
-        for (const task of updates) {
-          const updated = await firstValueFrom(
-            this.churchToolsService.updateGroupMemberFields(groupId, task.member.personId, { [fieldId]: task.newValue })
-          );
-          if (task.targetGroupIndex !== undefined) {
-            this.groups.update(gs => {
-              const newGs = [...gs];
-              newGs[task.targetGroupIndex!] = newGs[task.targetGroupIndex!].map(m =>
-                m.id === task.member.id ? { ...m, fields: updated.fields } : m
-              );
-              return newGs;
-            });
-          } else {
-            this.$anmeldungen.update(list => list.map(m =>
-              m.id === task.member.id ? { ...m, fields: updated.fields } : m
-            ));
-          }
-          processed++;
-          this.$progress.set(processed / updates.length);
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        alert(`${updates.length} Änderungen im langsamen Modus abgeschlossen!`);
-      } catch (err) {
-        console.error("Fehler im langsamen Modus", err);
-        alert("Ein Fehler ist im langsamen Modus aufgetreten.");
-      } finally {
-        this.$progress.set(0);
-      }
-      */
   }
 
-  loadGroups() {
-    /*
-    const weekId = this.formGroup.value.selectedWeek;
-    if (!weekId) return;
-    const savedData = localStorage.getItem(`groups_week_${weekId}`);
-    if (!savedData) {
-      alert('Keine gespeicherten Gruppen gefunden.');
-      return;
+  private updateFieldsInTree(list: AnmeldungenViewModel[], targetId: number, updatedFields: any[]): AnmeldungenViewModel[] {
+    return list.map(item => {
+      if (this.isParticipant(item)) {
+        if (item.id === targetId) {
+          return { ...item, fields: updatedFields };
+        }
+        return item;
+      } else {
+        return {
+          ...item,
+          participants: this.updateFieldsInTree(item.participants, targetId, updatedFields)
+        };
+      }
+    });
+  }
+
+  async saveGroupsServerSlow() {
+    const groupId = this.formGroup.value.selectedWeek;
+    if (!groupId || this.$progress() > 0) return;
+    try {
+      const allFields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
+      const targetField = allFields.find(f => f.name === 'Stammeszugehörigkeit' || f.name === 'Gruppenzugehörigkeit');
+      if (!targetField) {
+        alert("Zielfeld nicht gefunden!");
+        return;
+      }
+      const fieldId = targetField.id;
+      const fieldName = targetField.name;
+      const updates: { member: Participant, newValue: string | null, targetGroupIndex?: number }[] = [];
+      this.groups().forEach((group, i) => {
+        const groupName = `Stamm ${i + 1}`;
+        const flatGroupParticipants = this.expandParticipants(group);
+        flatGroupParticipants.forEach(member => {
+          const currentServerVal = member.fields?.find(f => f.id === fieldId || f.name === fieldName)?.value;
+          if (currentServerVal !== groupName) {
+            updates.push({ member, newValue: groupName, targetGroupIndex: i });
+          }
+        });
+      });
+      const flatUnassignedParticipants = this.expandParticipants(this.$anmeldungen());
+      flatUnassignedParticipants.forEach(member => {
+        const currentServerVal = member.fields?.find(f => f.id === fieldId || f.name === fieldName)?.value;
+        if (currentServerVal !== null && currentServerVal !== '') {
+          updates.push({ member, newValue: null });
+        }
+      });
+      if (updates.length === 0) {
+        alert('Keine Änderungen zum Speichern gefunden.');
+        return;
+      }
+      this.$progress.set(0.01);
+      let processed = 0;
+      for (const task of updates) {
+        const updated = await firstValueFrom(
+          this.churchToolsService.updateGroupMemberFields(groupId, task.member.personId, { [fieldId]: task.newValue })
+        );
+        if (task.targetGroupIndex !== undefined) {
+          this.groups.update(gs => 
+            gs.map((g, idx) => idx === task.targetGroupIndex ? this.updateFieldsInTree(g, task.member.id, updated.fields) : g)
+          );
+        } else {
+          this.$anmeldungen.update(list => this.updateFieldsInTree(list, task.member.id, updated.fields));
+        }
+        processed++;
+        this.$progress.set(processed / updates.length);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      this.isDirty.set(false);
+      alert(`${updates.length} Änderungen im langsamen Modus abgeschlossen!`);
+    } catch (err) {
+      console.error("Fehler im langsamen Modus", err);
+      alert("Ein Fehler ist im langsamen Modus aufgetreten.");
+    } finally {
+      this.$progress.set(0);
     }
-    const allParticipants = [...this.$anmeldungen(), ...this.groups().flat()];
-    const savedGroupIds: number[][] = JSON.parse(savedData);
-    const flatSavedIds = savedGroupIds.flat();
-    const newGroups: AnmeldungenViewModel[][] = savedGroupIds.map(ids =>
-      allParticipants.filter(p => ids.includes(p.id))
-    );
-    const unassigned = allParticipants.filter(p => !flatSavedIds.includes(p.id));
-    this.groups.set(newGroups);
-    this.$anmeldungen.set(unassigned);
-    */
   }
 
   loadGroupsServer() {
-    /*
-    const allParticipants = [...this.$anmeldungen(), ...this.groups().flat()];
+    const allParticipants = this.expandParticipants([...this.$anmeldungen(), ...this.groups().flat()]);
     const newGroups = Array.from({ length: 8 }, () => [] as AnmeldungenViewModel[]);
     const remainingInMain: AnmeldungenViewModel[] = [];
     allParticipants.forEach(p => {
-      const groupField = p.fields.find(f =>
+      const groupField = p.fields?.find(f =>
         f.name === 'Stammeszugehörigkeit' || f.name === 'Gruppenzugehörigkeit'
       );
       const val = groupField?.value;
@@ -292,178 +383,169 @@ export class StammesManagementComponent {
     });
     this.groups.set(newGroups);
     this.$anmeldungen.set(remainingInMain);
-    */
+    this.isDirty.set(false);
   }
 
-  onDrop(event: { item: any, from: string, to: string, oldIndex: number, newIndex: number }) {
-    const itemId = event.item.getAttribute('data-id');
-    if (!itemId) return;
+  onDrop(event: { item: any; from: string; to: string; oldIndex: number; newIndex: number }) {
+    const { from, to, oldIndex, newIndex } = event;
 
-    const isWrapperItem = itemId.startsWith('wrap-');
-    let movedItem: AnmeldungenViewModel | undefined;
-
-    // =========================================================================
-    // HELPER RECURSIVE FUNCTIONS FOR DEEP STATE MUTATION & SEARCH
-    // =========================================================================
-
-    // Recursively finds and extracts a participant or wrapper from a list of view models
-    const extractFromTree = (items: AnmeldungenViewModel[], targetContainerId: string, searchId: string | number): AnmeldungenViewModel[] => {
-      return items.reduce((acc, item) => {
-        if (!this.isParticipant(item)) {
-          if (item.id === targetContainerId) {
-            // Found the target wrapper container! Grab the item being moved
-            const targetIdNum = typeof searchId === 'string' ? null : searchId;
-            const found = item.participants.find(p => p.id === targetIdNum || p.id === searchId);
-            if (found) movedItem = found;
-
-            // Filter it out from this wrapper's array
-            item.participants = item.participants.filter(p => p.id !== targetIdNum && p.id !== searchId);
-          } else {
-            // Recurse deeper into inner wrappers
-            item.participants = extractFromTree(item.participants, targetContainerId, searchId);
-          }
-        }
-        acc.push(item);
-        return acc;
-      }, [] as AnmeldungenViewModel[]);
-    };
-
-    // Recursively finds a target wrapper and splices an item into it
-    const insertIntoTree = (items: AnmeldungenViewModel[], targetContainerId: string, itemToInsert: AnmeldungenViewModel, index: number): AnmeldungenViewModel[] => {
-      return items.map(item => {
-        if (!this.isParticipant(item)) {
-          if (item.id === targetContainerId) {
-            // Found the target container wrapper, insert the moved item here
-            const updatedParticipants = [...item.participants];
-            updatedParticipants.splice(index, 0, itemToInsert);
-            item.participants = updatedParticipants;
-          } else {
-            // Keep searching nested wrappers recursively
-            item.participants = insertIntoTree(item.participants, targetContainerId, itemToInsert, index);
-          }
-        }
-        return item;
-      });
-    };
-
-    // =========================================================================
-    // 1. EXTRACT THE MOVED ITEM FROM ITS SOURCE
-    // =========================================================================
-    if (event.from === 'main') {
-      const personId = Number(itemId);
-      movedItem = this.$anmeldungen().find(p => p.id === personId);
-      this.$anmeldungen.update(list => list.filter(p => p.id !== personId));
-    }
-    else if (event.from === 'wrappers') {
-      if (isWrapperItem) {
-        movedItem = this.availableWrappers().find(w => w.id === itemId);
-        this.availableWrappers.update(list => list.filter(w => w.id !== itemId));
-      } else {
-        const personId = Number(itemId);
-        this.availableWrappers.update(ws => {
-          return ws.map(w => {
-            if (w.id === itemId) return w;
-            const fakeContainer = { id: 'temp-tray-root', participants: [w] };
-            extractFromTree([fakeContainer], w.id, personId);
-            return fakeContainer.participants[0] as GroupWrapper;
-          });
-        });
+    if (to === 'wrappers') {
+      if (from === 'main' || !isNaN(Number(from))) {
+        console.warn("Cannot drop a participant directly into the wrapper pool!");
+        return; 
       }
     }
-    else if (event.from.startsWith('wrap-')) {
-      const targetId = isWrapperItem ? itemId : Number(itemId);
-
-      let wrapperOnTray = this.availableWrappers().find(w => w.id === event.from);
-      if (wrapperOnTray) {
-        this.availableWrappers.update(ws => {
-          const fakeRoot = { id: 'temp-tray-root', participants: ws };
-          // FIX: explicitly cast the returned collection as GroupWrapper[]
-          fakeRoot.participants = extractFromTree(fakeRoot.participants, event.from, targetId) as GroupWrapper[];
-          return fakeRoot.participants;
-        });
-      } else {
-        this.groups.update(gs => gs.map(group => extractFromTree(group, event.from, targetId)));
-      }
-    }
-    else {
-      const idNum = Number(itemId);
-      const fromGroupIdx = Number(event.from);
-
-      if (!isNaN(fromGroupIdx)) {
-        movedItem = this.groups()[fromGroupIdx].find(p => p.id === idNum || p.id === itemId);
-        this.groups.update(gs => {
-          const newGs = [...gs];
-          newGs[fromGroupIdx] = newGs[fromGroupIdx].filter(p => p.id !== idNum && p.id !== itemId);
-          return newGs;
-        });
-      }
+    if (from === to && oldIndex === newIndex) {
+      return;
     }
 
-    if (!movedItem) return;
-
-    // =========================================================================
-    // 2. GENERATE NEW WRAPPER PLACEHOLDER IF EXTRACTED FROM TRAY CONTAINER
-    // =========================================================================
-    if (event.from === 'wrappers') {
-      this.availableWrappers.update(ws => {
-        const hasEmptyWrapper = ws.some(w => w.participants.length === 0);
-        if (hasEmptyWrapper) return ws;
-        return [...ws, { id: `wrap-${Date.now()}`, participants: [] }];
-      });
-    }
-
-    // =========================================================================
-    // 3. INSERT THE MOVED ITEM INTO ITS TARGET DESTINATION
-    // =========================================================================
-    if (event.to === 'main') {
+    let movedItem: AnmeldungenViewModel | null = null;
+    if (from === 'main') {
       this.$anmeldungen.update(list => {
         const newList = [...list];
-        newList.splice(event.newIndex, 0, movedItem!);
+        movedItem = newList.splice(oldIndex, 1)[0];
         return newList;
       });
-    }
-    else if (event.to === 'wrappers') {
+    } else if (from === 'wrappers') {
       this.availableWrappers.update(list => {
         const newList = [...list];
-        newList.splice(event.newIndex, 0, movedItem as GroupWrapper);
+        movedItem = newList.splice(oldIndex, 1)[0];
         return newList;
       });
+    } else if (!isNaN(Number(from))) {
+      const groupIdx = Number(from);
+      this.groups.update(allGroups => {
+        const newGroups = allGroups.map(g => [...g]);
+        movedItem = newGroups[groupIdx].splice(oldIndex, 1)[0];
+        return newGroups;
+      });
+    } else {
+      let found = false;
+      this.groups.update(allGroups => {
+        const newGroups = allGroups.map(g => [...g]);
+        for (let i = 0; i < newGroups.length; i++) {
+          if (this.removeItemFromNestedWrapper(newGroups[i], from, oldIndex, item => movedItem = item)) {
+            found = true;
+            break;
+          }
+        }
+        return newGroups;
+      });
+      if (!found) {
+        this.$anmeldungen.update(list => {
+          const newList = [...list];
+          this.removeItemFromNestedWrapper(newList, from, oldIndex, item => movedItem = item);
+          return newList;
+        });
+      }
     }
-    else if (event.to.startsWith('wrap-')) {
-      let targetWrapperOnTray = this.availableWrappers().find(w => w.id === event.to);
+    if (!movedItem) return;
+    if (to === 'main') {
+      this.$anmeldungen.update(list => {
+        const newList = [...list];
+        newList.splice(newIndex, 0, movedItem!);
+        return newList;
+      });
+    } else if (to === 'wrappers') {
+      this.availableWrappers.update(list => {
+        const newList = [...list];
+        newList.splice(newIndex, 0, movedItem!);
+        return newList;
+      });
+    } else if (!isNaN(Number(to))) {
+      const groupIdx = Number(to);
+      this.groups.update(allGroups => {
+        const newGroups = allGroups.map(g => [...g]);
+        newGroups[groupIdx].splice(newIndex, 0, movedItem!);
+        return newGroups;
+      });
+    } else {
+      let inserted = false;
+      this.groups.update(allGroups => {
+        const newGroups = allGroups.map(g => [...g]);
+        for (let i = 0; i < newGroups.length; i++) {
+          if (this.insertItemIntoNestedWrapper(newGroups[i], to, newIndex, movedItem!)) {
+            inserted = true;
+            break;
+          }
+        }
+        return newGroups;
+      });
+      if (!inserted) {
+        this.$anmeldungen.update(list => {
+          const newList = [...list];
+          this.insertItemIntoNestedWrapper(newList, to, newIndex, movedItem!);
+          return newList;
+        });
+      }
+    }
+    this.isDirty.set(true);
+    if (this.availableWrappers().length === 0) {
+      this.availableWrappers.update(list => {
+        const nextId = `wrap-${Date.now()}`;
+        return [
+          ...list,
+          { id: nextId, participants: [] }
+        ];
+      });
+    }
+  }
 
-      if (targetWrapperOnTray) {
-        this.availableWrappers.update(ws => {
-          const fakeRoot = { id: 'temp-tray-root', participants: ws };
-          // FIX: explicitly cast the returned collection as GroupWrapper[]
-          fakeRoot.participants = insertIntoTree(fakeRoot.participants, event.to, movedItem!, event.newIndex) as GroupWrapper[];
-          return fakeRoot.participants;
-        });
-      } else {
-        this.groups.update(gs => gs.map(group => insertIntoTree(group, event.to, movedItem!, event.newIndex)));
+  private removeItemFromNestedWrapper(
+    list: AnmeldungenViewModel[], 
+    targetWrapperId: string, 
+    indexToRemove: number,
+    onSuccess: (item: AnmeldungenViewModel) => void
+  ): boolean {
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!this.isParticipant(item)) {
+        if (item.id === targetWrapperId) {
+          const targetArray = [...item.participants];
+          const extracted = targetArray.splice(indexToRemove, 1)[0];
+          item.participants = targetArray;
+          onSuccess(extracted);
+          return true;
+        }
+        if (this.removeItemFromNestedWrapper(item.participants, targetWrapperId, indexToRemove, onSuccess)) {
+          return true;
+        }
       }
     }
-    else {
-      const toGroupIdx = Number(event.to);
-      if (!isNaN(toGroupIdx)) {
-        this.groups.update(gs => {
-          const newGs = [...gs];
-          const targetGroup = [...newGs[toGroupIdx]];
-          targetGroup.splice(event.newIndex, 0, movedItem!);
-          newGs[toGroupIdx] = targetGroup;
-          return newGs;
-        });
+    return false;
+  }
+  private insertItemIntoNestedWrapper(
+    list: AnmeldungenViewModel[], 
+    targetWrapperId: string, 
+    indexToInsert: number,
+    itemToInsert: AnmeldungenViewModel
+  ): boolean {
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!this.isParticipant(item)) {
+        if (item.id === targetWrapperId) {
+          const targetArray = [...item.participants];
+          targetArray.splice(indexToInsert, 0, itemToInsert);
+          item.participants = targetArray;
+          return true;
+        }
+        if (this.insertItemIntoNestedWrapper(item.participants, targetWrapperId, indexToInsert, itemToInsert)) {
+          return true;
+        }
       }
     }
+    return false;
   }
 
   expandParticipants(items: AnmeldungenViewModel[]): GroupMember[] {
     let flatList: GroupMember[] = [];
+    if (!items || !Array.isArray(items)) return flatList;
+
     items.forEach(item => {
-      if ('participants' in item && Array.isArray(item.participants)) {
+      if (this.isParticipant(item)) {
+        flatList.push(item);
+      } else if (item && Array.isArray(item.participants)) {
         flatList = [...flatList, ...this.expandParticipants(item.participants)];
-      } else {
-        flatList.push(item as GroupMember);
       }
     });
     return flatList;
@@ -519,38 +601,38 @@ export class StammesManagementComponent {
   searchTerm = signal<string>('');
 
   filteredParticipants = computed(() => {
-  const query = this.searchTerm().toLowerCase().trim();
-  const allElements = this.$anmeldungen();
-  
-  if (!query) {
-    return allElements;
-  }
+    const query = this.searchTerm().toLowerCase().trim();
+    const allElements = this.$anmeldungen();
 
-  // Helper function to recursively filter a list of view models
-  const filterTree = (items: AnmeldungenViewModel[]): AnmeldungenViewModel[] => {
-    return items
-      .map(item => {
-        if (this.isParticipant(item)) {
-          // Check if individual participant matches the query
-          const matches =
-            item.person.domainAttributes.firstName.toLowerCase().includes(query) ||
-            item.person.domainAttributes.lastName.toLowerCase().includes(query) ||
-            item.id.toString().includes(query);
-          
-          return matches ? item : null;
-        } else {
-          const filteredChildren = filterTree(item.participants);
-          
-          if (filteredChildren.length > 0) {
-            return item;
+    if (!query) {
+      return allElements;
+    }
+
+    // Helper function to recursively filter a list of view models
+    const filterTree = (items: AnmeldungenViewModel[]): AnmeldungenViewModel[] => {
+      return items
+        .map(item => {
+          if (this.isParticipant(item)) {
+            // Check if individual participant matches the query
+            const matches =
+              item.person.domainAttributes.firstName.toLowerCase().includes(query) ||
+              item.person.domainAttributes.lastName.toLowerCase().includes(query) ||
+              item.id.toString().includes(query);
+
+            return matches ? item : null;
+          } else {
+            const filteredChildren = filterTree(item.participants);
+
+            if (filteredChildren.length > 0) {
+              return item;
+            }
+            return null;
           }
-          return null;
-        }
-      })
-      .filter((item): item is AnmeldungenViewModel => item !== null);
-  };
-  return filterTree(allElements);
-});
+        })
+        .filter((item): item is AnmeldungenViewModel => item !== null);
+    };
+    return filterTree(allElements);
+  });
 
   updateSearch(event: Event) {
     const element = event.target as HTMLInputElement;
