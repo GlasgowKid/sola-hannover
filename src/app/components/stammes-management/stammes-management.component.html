@@ -1,161 +1,133 @@
-<div class="container d-flex flex-column">
-    <div [formGroup]="formGroup" class="input-group mb-3">
-        @if ($jahre(); as jahre) {
-        <select formControlName="selectedYear" class="form-select"
-            [class.text-secondary]="!formGroup.value.selectedYear">
-            <option [ngValue]="null" selected disabled>Jahr</option>
-            @for (jahr of jahre; track jahr.id) {
-            <option [ngValue]="jahr.id">{{ jahr.name }}</option>
-            }
-        </select>
-        }
-        @if ($solawochen(); as solawochen) {
-        <select formControlName="selectedWeek" class="form-select"
-            [class.text-secondary]="!formGroup.value.selectedWeek">
-            <option [ngValue]="null" selected disabled>Solawoche</option>
-            @for (solawoche of solawochen; track solawoche.id) {
-            <option [ngValue]="solawoche.id">
-                {{ solawoche.name }}
-            </option>
-            }
-        </select>
-        }
-    </div>
-    <div class="d-flex flex-column" style="height: calc(100vh - 160px);">
-
-        <div class="row flex-grow-1 overflow-hidden pt-2">
-
-            <div class="col-lg-2 col-md-3 d-flex flex-column h-100">
-                <div class="card shadow-sm flex-grow-1 overflow-hidden">
-                    <div
-                        class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-shrink-0">
-                        Alle Teilnehmer
-                        <span class="badge bg-white text-primary">{{ filteredParticipants().length }}</span>
-                    </div>
-
-                    <div class="p-2 bg-light border-bottom flex-shrink-0">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-white border-end-0">
-                                <i class="bi bi-search"></i>
-                            </span>
-                            <input type="text" class="form-control border-start-0 ps-0" placeholder="Suchen..."
-                                (input)="updateSearch($event)">
-                        </div>
-                    </div>
-
-                    <div class="card-body p-2 overflow-y-auto" sortable data-list-id="main" (onDrop)="onDrop($event)"
-                        style="background: #fafafa;">
-                        @for (item of filteredParticipants(); track item.id) {
-                        <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: item }"></ng-container>
-                        } @empty {
-                        <div class="text-center text-muted mt-4 small">
-                            Keine Teilnehmer gefunden.
-                        </div>
-                        }
-                    </div>
+<div [formGroup]="formGroup" class="input-group mb-2 input-group-sm">
+    @if ($jahre(); as jahre) {
+    <select formControlName="selectedYear" class="form-select" [class.text-secondary]="!formGroup.value.selectedYear">
+        <option [ngValue]="null" selected disabled>Jahr</option>
+        @for (j of jahre; track j.id) { <option [ngValue]="j.id">{{ j.name }}</option> }
+    </select>
+    }
+    @if ($solawochen(); as solawochen) {
+    <select formControlName="selectedWeek" class="form-select" [class.text-secondary]="!formGroup.value.selectedWeek">
+        <option [ngValue]="null" selected disabled>Solawoche</option>
+        @for (w of solawochen; track w.id) { <option [ngValue]="w.id">{{ w.name }}</option> }
+    </select>
+    }
+</div>
+<div class="d-flex flex-column" style="height: calc(100vh - 120px);">
+    <div class="row flex-grow-1 overflow-hidden pt-2">
+        <div class="col-lg-2 col-md-3 d-flex flex-column h-100">
+            <div class="card shadow-sm flex-grow-1 overflow-hidden">
+                <div
+                    class="card-header bg-primary text-white d-flex justify-content-between align-items-center p-2 small fw-bold">
+                    Alle Teilnehmer
+                    <span class="badge bg-white text-primary">{{ filteredParticipants().length }}</span>
                 </div>
-            </div>
-
-            <div class="col-md-9 h-100 overflow-y-auto pb-3">
-                <div class="row g-3">
-                    @for (group of groups(); track $index) {
-                    <div class="col-lg-3 col-md-4 col-sm-6">
-                        <div class="card border-primary">
-                            <div class="card-header p-1 bg-light d-flex justify-content-between align-items-center lh-sm"
-                                style="font-size: 0.75rem;">
-                                <div class="text-truncate">
-                                    <span class="fw-semibold">Stamm {{ $index + 1 }}</span>
-                                    <span class="text-muted ms-1">(Ø {{ getAverageAge(group) }} | Var {{ getAgeVariance(group)
-                                        }})</span>
-                                </div>
-
-                                @let counts = getGenderCounts(group);
-                                <span class="fw-bold ms-2 flex-shrink-0">
-                                    <span class="text-primary">{{ counts.boys }}</span><span
-                                        class="text-muted mx-0.5">/</span><span class="text-danger">{{ counts.girls
-                                        }}</span>
-                                </span>
-                            </div>
-
-                            <div class="card-body p-2" sortable [attr.data-list-id]="$index" (onDrop)="onDrop($event)"
-                                style="min-height: 120px; background: #fff;">
-                                @for (item of group; track item.id) {
-                                <ng-container
-                                    *ngTemplateOutlet="itemTemplate; context: { $implicit: item }"></ng-container>
-                                }
-                            </div>
-                        </div>
-                    </div>
+                <div class="p-1.5 bg-light border-bottom input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0 ps-0" placeholder="Suchen..."
+                        (input)="updateSearch($event)">
+                </div>
+                <div class="card-body p-1.5 overflow-y-auto" sortable data-list-id="main" (onDrop)="onDrop($event)"
+                    style="background: #fafafa;">
+                    @for (item of filteredParticipants(); track item.id) {
+                    <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: item }" />
+                    } @empty {
+                    <div class="text-center text-muted mt-3 small">Keine Teilnehmer gefunden.</div>
                     }
                 </div>
             </div>
         </div>
-
-        <div class="mt-auto py-1.5 border-top d-flex justify-content-between align-items-center bg-white flex-shrink-0 style-compact"
-            style="font-size: 0.8rem; min-height: 45px;">
-            <div class="d-flex align-items-center gap-2">
-                <div class="form-check form-switch px-2" style="transform: scale(0.9); transform-origin: left center;">
-                    <input class="form-check-input" type="checkbox" role="switch" id="idToggle" [checked]="showIds()"
-                        (change)="toggleIds()">
-                    <label class="form-check-label fw-semibold text-muted" for="idToggle">
-                        <i class="bi bi-bug me-1"></i>Debug
-                    </label>
+        <div class="col-md-9 h-100 overflow-y-auto pb-3">
+            <div class="row g-3">
+                @for (group of groups(); track $index) {
+                <div class="col-lg-3 col-md-4 col-sm-6">
+                    <div class="card border-primary">
+                        <div class="card-header p-1 bg-light d-flex justify-content-between align-items-center lh-sm"
+                            style="font-size: 0.75rem;">
+                            <div class="text-truncate">
+                                <span class="fw-semibold">Stamm {{ $index + 1 }}</span>
+                                <span class="text-muted ms-1">(Ø {{ getAverageAge(group) }} | Var {{
+                                    getAgeVariance(group)
+                                    }})</span>
+                            </div>
+                            @let counts = getGenderCounts(group);
+                            <span class="fw-bold ms-2 flex-shrink-0">
+                                <span class="text-primary">{{ counts.boys }}</span><span
+                                    class="text-muted mx-0.5">/</span><span class="text-danger">{{ counts.girls
+                                    }}</span>
+                            </span>
+                        </div>
+                        <div class="card-body p-2" sortable [attr.data-list-id]="$index" (onDrop)="onDrop($event)"
+                            style="min-height: 120px; background: #fff;">
+                            @for (item of group; track item.id) {
+                            <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: item }"></ng-container>
+                            }
+                        </div>
+                    </div>
                 </div>
-                <div class="form-check form-switch px-2" style="transform: scale(0.9); transform-origin: left center;">
-                    <input class="form-check-input" type="checkbox" role="switch" id="ageToggle" [checked]="showAge()"
-                        (change)="toggleAge()">
-                    <label class="form-check-label fw-semibold text-muted" for="ageToggle">
-                        <i class="bi bi-calendar-event me-1"></i>Alter
-                    </label>
-                </div>
-                <div class="form-check form-switch px-2" style="transform: scale(0.9); transform-origin: left center;">
-                    <input class="form-check-input" type="checkbox" role="switch" id="details" [checked]="details()"
-                        (change)="toggleDetails()">
-                    <label class="form-check-label fw-semibold text-muted" for="details">
-                        <i class="bi bi-eye me-1"></i>Details
-                    </label>
-                </div>
+                }
             </div>
-
-            <div class="d-flex align-items-center gap-2 px-2 border-start border-end h-100">
-                <small class="fw-bold text-muted text-uppercase"
-                    style="font-size: 0.65rem; tracking: 0.5px;">Pool:</small>
-                <div class="d-flex gap-1 align-items-center" sortable data-list-id="wrappers" (onDrop)="onDrop($event)"
-                    style="min-height: 28px;">
-                    @for (wrap of availableWrappers(); track wrap.id) {
-                    <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: wrap }"></ng-container>
-                    }
-                </div>
+        </div>
+    </div>
+    <div class="mt-auto py-1.5 border-top d-flex justify-content-between align-items-center bg-white flex-shrink-0 style-compact"
+        style="font-size: 0.8rem; min-height: 45px;">
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-check form-switch px-2" style="transform: scale(0.9); transform-origin: left center;">
+                <input class="form-check-input" type="checkbox" role="switch" id="idToggle" [checked]="showIds()"
+                    (change)="toggleIds()">
+                <label class="form-check-label fw-semibold text-muted" for="idToggle">
+                    <i class="bi bi-bug me-1"></i>Debug
+                </label>
             </div>
-
-            <div class="d-flex align-items-center gap-2 pe-2">
-                <div class="btn-group" role="group">
-                    <button class="btn btn-sm btn-outline-secondary py-0.5 px-2" (click)="loadGroups()"
-                        title="Entwurf laden" style="font-size: 0.75rem;">
-                        <i class="bi bi-arrow-clockwise"></i> Entwurf
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary py-0.5 px-2" (click)="saveGroups()"
-                        title="Zwischenspeichern" style="font-size: 0.75rem;">
-                        <i class="bi bi-save"></i> Merken
-                    </button>
-                </div>
-
-                <div class="btn-group" role="group">
-                    <button class="btn btn-sm btn-info text-white py-0.5 px-2" (click)="loadGroupsServer()"
-                        style="font-size: 0.75rem;">
-                        <i class="bi bi-cloud-download"></i> Pull
-                    </button>
-                    @if (showIds()) {
-                    <button class="btn btn-sm btn-warning py-0.5 px-2" (click)="saveGroupsServerSlow()"
-                        style="font-size: 0.75rem;">
-                        <i class="bi bi-hourglass-split"></i> Slow
-                    </button>
-                    }
-                    <button class="btn btn-sm btn-success py-0.5 px-2" (click)="saveGroupsServer()"
-                        style="font-size: 0.75rem;">
-                        <i class="bi bi-cloud-upload"></i> Push (Final)
-                    </button>
-                </div>
+            <div class="form-check form-switch px-2" style="transform: scale(0.9); transform-origin: left center;">
+                <input class="form-check-input" type="checkbox" role="switch" id="ageToggle" [checked]="showAge()"
+                    (change)="toggleAge()">
+                <label class="form-check-label fw-semibold text-muted" for="ageToggle">
+                    <i class="bi bi-calendar-event me-1"></i>Alter
+                </label>
+            </div>
+            <div class="form-check form-switch px-2" style="transform: scale(0.9); transform-origin: left center;">
+                <input class="form-check-input" type="checkbox" role="switch" id="details" [checked]="details()"
+                    (change)="toggleDetails()">
+                <label class="form-check-label fw-semibold text-muted" for="details">
+                    <i class="bi bi-eye me-1"></i>Details
+                </label>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 px-2 border-start border-end h-100">
+            <small class="fw-bold text-muted text-uppercase" style="font-size: 0.65rem; tracking: 0.5px;">Pool:</small>
+            <div class="d-flex gap-1 align-items-center" sortable data-list-id="wrappers" (onDrop)="onDrop($event)"
+                style="min-height: 28px;">
+                @for (wrap of availableWrappers(); track wrap.id) {
+                <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: wrap }"></ng-container>
+                }
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 pe-2">
+            <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-outline-secondary py-0.5 px-2" (click)="loadGroups()"
+                    title="Entwurf laden" style="font-size: 0.75rem;">
+                    <i class="bi bi-arrow-clockwise"></i> Entwurf
+                </button>
+                <button class="btn btn-sm btn-outline-secondary py-0.5 px-2" (click)="saveGroups()"
+                    title="Zwischenspeichern" style="font-size: 0.75rem;">
+                    <i class="bi bi-save"></i> Merken
+                </button>
+            </div>
+            <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-info text-white py-0.5 px-2" (click)="loadGroupsServer()"
+                    style="font-size: 0.75rem;">
+                    <i class="bi bi-cloud-download"></i> Pull
+                </button>
+                @if (showIds()) {
+                <button class="btn btn-sm btn-warning py-0.5 px-2" (click)="saveGroupsServerSlow()"
+                    style="font-size: 0.75rem;">
+                    <i class="bi bi-hourglass-split"></i> Slow
+                </button>
+                }
+                <button class="btn btn-sm btn-success py-0.5 px-2" (click)="saveGroupsServer()"
+                    style="font-size: 0.75rem;">
+                    <i class="bi bi-cloud-upload"></i> Push (Final)
+                </button>
             </div>
         </div>
     </div>
@@ -179,44 +151,34 @@
 
 <ng-template #itemTemplate let-item>
     @if (isParticipant(item)) {
-    <div class="p-2 mb-1 border rounded shadow-sm cursor-move {{ getGenderClass(item) }}" [attr.data-id]="item.id"
-        style="font-size: 0.85rem;">
-        <strong>
-            {{ item.person.domainAttributes.firstName }}
-            {{ item.person.domainAttributes.lastName }}
-        </strong>
-        @if (showIds()) {
-        <small class="text-muted">##{{ item.id }}</small>
-        }
-        @if (showAge()) {
-        <div class="small text-muted">
-            Alter: {{ getAgeThisYear(item.personFields?.birthday) }}
-        </div>
-        }
+    <div class="p-1 mb-1 border rounded shadow-sm cursor-move lh-sm {{ getGenderClass(item) }}" [attr.data-id]="item.id"
+        [attr.title]="getWunschField(item) ?? 'Kein Wunsch angegeben'" style="font-size: 0.8rem;">
+
+        <span class="fw-bold">{{ item.person.domainAttributes.firstName }} {{ item.person.domainAttributes.lastName
+            }}</span>
+        @if (showIds()) { <small class="text-muted ms-1">#{{ item.id }}</small> }
+        @if (showAge()) { <small class="text-muted d-block text-truncate">Alter: {{
+            getAgeThisYear(item.personFields?.birthday) }}</small> }
     </div>
     } @else {
     <div class="card border-dashed p-1 bg-light d-flex flex-column align-items-center justify-content-center"
-        [attr.data-id]="item.id" style="min-width: 100px; border: 2px dashed #ccc; cursor: grab;">
+        [attr.data-id]="item.id" style="min-width: 100px; border: 2px dashed #ccc; cursor: grab; min-height: 35px;">
+
         @if (details()) {
-        <div class="w-100 d-flex justify-content-between align-items-center px-1 border-bottom pb-1 mb-1"
+        <div class="w-100 d-flex justify-content-between align-items-center px-1 border-bottom pb-1 mb-1 small text-muted"
             style="font-size: 0.75rem;">
             <div>
-                <span class="text-muted fw-bold">Sub </span>
-                <small class="text-muted">
-                    (Ø {{ getAverageAge([item]) }} | Var {{ getAgeVariance([item]) }})
-                </small>
+                <span class="fw-bold">Sub </span>
+                <span>(Ø {{ getAverageAge([item]) }} | Var {{ getAgeVariance([item]) }})</span>
             </div>
-
             @let counts = getGenderCounts([item]);
-            <small class="fw-bold ms-2">
-                <span class="text-primary">{{ counts.boys }}</span>
-                <span class="text-muted">/</span>
-                <span class="text-danger">{{ counts.girls }}</span>
-            </small>
+            <span class="fw-bold ms-2">
+                <span class="text-primary">{{ counts.boys }}</span>/<span class="text-danger">{{ counts.girls }}</span>
+            </span>
         </div>
         }
-        <div class="w-100 mt-1" sortable [attr.data-list-id]="item.id" (onDrop)="onDrop($event)"
-            style="min-height: 30px;">
+
+        <div class="w-100 mt-1" sortable [attr.data-list-id]="item.id" (onDrop)="onDrop($event)">
             @for (p of item.participants; track p.id) {
             <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: p }"></ng-container>
             }

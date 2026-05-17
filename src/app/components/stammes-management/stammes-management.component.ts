@@ -165,7 +165,7 @@ export class StammesManagementComponent {
       }
     };
     const assignment = this.groups().map(group => group.map(item => serializeItem(item)));
-    
+
     localStorage.setItem(`groups_week_${weekId}`, JSON.stringify(assignment));
     this.isDirty.set(false);
     alert('Gruppen lokal gespeichert!');
@@ -236,7 +236,7 @@ export class StammesManagementComponent {
       this.groups().forEach((group, i) => {
         const groupName = `Stamm ${i + 1}`;
         const flatGroupParticipants = this.expandParticipants(group);
-        
+
         flatGroupParticipants.forEach(member => {
           const currentServerVal = member.fields?.find(f => f.id === fieldId || f.name === fieldName)?.value;
           if (currentServerVal !== groupName) {
@@ -273,7 +273,7 @@ export class StammesManagementComponent {
         this.$progress.set((i + chunk.length) / tasks.length);
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-      this.isDirty.set(false); 
+      this.isDirty.set(false);
       alert(`${tasks.length} Änderungen erfolgreich gespeichert!`);
     } catch (err) {
       console.error("Speicherfehler", err);
@@ -340,7 +340,7 @@ export class StammesManagementComponent {
           this.churchToolsService.updateGroupMemberFields(groupId, task.member.personId, { [fieldId]: task.newValue })
         );
         if (task.targetGroupIndex !== undefined) {
-          this.groups.update(gs => 
+          this.groups.update(gs =>
             gs.map((g, idx) => idx === task.targetGroupIndex ? this.updateFieldsInTree(g, task.member.id, updated.fields) : g)
           );
         } else {
@@ -392,7 +392,7 @@ export class StammesManagementComponent {
     if (to === 'wrappers') {
       if (from === 'main' || !isNaN(Number(from))) {
         console.warn("Cannot drop a participant directly into the wrapper pool!");
-        return; 
+        return;
       }
     }
     if (from === to && oldIndex === newIndex) {
@@ -492,8 +492,8 @@ export class StammesManagementComponent {
   }
 
   private removeItemFromNestedWrapper(
-    list: AnmeldungenViewModel[], 
-    targetWrapperId: string, 
+    list: AnmeldungenViewModel[],
+    targetWrapperId: string,
     indexToRemove: number,
     onSuccess: (item: AnmeldungenViewModel) => void
   ): boolean {
@@ -515,8 +515,8 @@ export class StammesManagementComponent {
     return false;
   }
   private insertItemIntoNestedWrapper(
-    list: AnmeldungenViewModel[], 
-    targetWrapperId: string, 
+    list: AnmeldungenViewModel[],
+    targetWrapperId: string,
     indexToInsert: number,
     itemToInsert: AnmeldungenViewModel
   ): boolean {
@@ -641,5 +641,21 @@ export class StammesManagementComponent {
 
   private getAllParticipantsInGroup(group: AnmeldungenViewModel[]): AnmeldungenViewModel[] {
     return group;
+  }
+
+  getWunschField(p: Participant): string | null {
+    if (!p.fields || !Array.isArray(p.fields)) return null;
+    const wunschField1 = p.fields.find(f => f.name === 'Wunsch 1');
+    const wunschField2 = p.fields.find(f => f.name === 'Wunsch 2');
+    const wunsch1 = wunschField1 ? (wunschField1.value ? String(wunschField1.value).trim() : null) : null;
+    const wunsch2 = wunschField2 ? (wunschField2.value ? String(wunschField2.value).trim() : null) : null;
+    if (wunsch1 && wunsch2) {
+      return `Wunsch 1: ${wunsch1} \nWunsch 2: ${wunsch2}`;
+    } else if (wunsch1) {
+      return `Wunsch 1: ${wunsch1}`;
+    } else if (wunsch2) {
+      return `Wunsch 2: ${wunsch2}`;
+    }
+    return null;
   }
 }
