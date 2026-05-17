@@ -389,23 +389,29 @@ export class StammesManagementComponent {
   onDrop(event: { item: any; from: string; to: string; oldIndex: number; newIndex: number }) {
     const { from, to, oldIndex, newIndex } = event;
 
-    if (to === 'wrappers') {
-      if (from === 'main' || !isNaN(Number(from))) {
-        console.warn("Cannot drop a participant directly into the wrapper pool!");
-        return;
-      }
-    }
     if (from === to && oldIndex === newIndex) {
       return;
     }
 
     let movedItem: AnmeldungenViewModel | null = null;
+
     if (from === 'main') {
-      this.$anmeldungen.update(list => {
-        const newList = [...list];
-        movedItem = newList.splice(oldIndex, 1)[0];
-        return newList;
-      });
+      // 1. Get the actual item from the filtered view using oldIndex
+      const currentFiltered = this.filteredParticipants();
+      const targetItem = currentFiltered[oldIndex];
+
+      if (targetItem) {
+        movedItem = targetItem;
+        // 2. Remove it from the master array by finding its index via matching IDs
+        this.$anmeldungen.update(list => {
+          const newList = [...list];
+          const masterIdx = newList.findIndex(item => item.id === targetItem.id);
+          if (masterIdx !== -1) {
+            newList.splice(masterIdx, 1);
+          }
+          return newList;
+        });
+      }
     } else if (from === 'wrappers') {
       this.availableWrappers.update(list => {
         const newList = [...list];
@@ -439,7 +445,9 @@ export class StammesManagementComponent {
         });
       }
     }
+
     if (!movedItem) return;
+
     if (to === 'main') {
       this.$anmeldungen.update(list => {
         const newList = [...list];
@@ -449,7 +457,15 @@ export class StammesManagementComponent {
     } else if (to === 'wrappers') {
       this.availableWrappers.update(list => {
         const newList = [...list];
-        newList.splice(newIndex, 0, movedItem!);
+        if (this.isParticipant(movedItem!)) {
+          const wrapperItem: GroupWrapper = {
+            id: `wrap-auto-${Date.now()}`,
+            participants: [movedItem]
+          };
+          newList.splice(newIndex, 0, wrapperItem);
+        } else {
+          newList.splice(newIndex, 0, movedItem!);
+        }
         return newList;
       });
     } else if (!isNaN(Number(to))) {
@@ -472,6 +488,15 @@ export class StammesManagementComponent {
         return newGroups;
       });
       if (!inserted) {
+        this.availableWrappers.update(list => {
+          const newList = [...list];
+          if (this.insertItemIntoNestedWrapper(newList, to, newIndex, movedItem!)) {
+            inserted = true;
+          }
+          return newList;
+        });
+      }
+      if (!inserted) {
         this.$anmeldungen.update(list => {
           const newList = [...list];
           this.insertItemIntoNestedWrapper(newList, to, newIndex, movedItem!);
@@ -479,6 +504,7 @@ export class StammesManagementComponent {
         });
       }
     }
+
     this.isDirty.set(true);
     if (this.availableWrappers().length === 0) {
       this.availableWrappers.update(list => {
