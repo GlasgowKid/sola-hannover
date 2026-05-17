@@ -36,11 +36,7 @@ export class StammesManagementComponent {
     selectedWeek: this.fb.control<number | null>(null),
   });
 
-  view = signal<'participants' | 'groups'>('participants');
   groups = signal<AnmeldungenViewModel[][]>(Array.from({ length: 8 }, () => []));
-  toggleView() {
-    this.view.update(v => v === 'participants' ? 'groups' : 'participants');
-  }
 
   availableWrappers = signal<GroupWrapper[]>([{ id: 'wrap-1', participants: [] }]);
 
@@ -523,15 +519,38 @@ export class StammesManagementComponent {
   searchTerm = signal<string>('');
 
   filteredParticipants = computed(() => {
-    const query = this.searchTerm().toLowerCase();
-    const all = this.expandParticipants(this.$anmeldungen());
-    if (!query) return all;
-    return all.filter(p =>
-      p.person.domainAttributes.firstName.toLowerCase().includes(query) ||
-      p.person.domainAttributes.lastName.toLowerCase().includes(query) ||
-      p.id.toString().includes(query)
-    );
-  });
+  const query = this.searchTerm().toLowerCase().trim();
+  const allElements = this.$anmeldungen();
+  
+  if (!query) {
+    return allElements;
+  }
+
+  // Helper function to recursively filter a list of view models
+  const filterTree = (items: AnmeldungenViewModel[]): AnmeldungenViewModel[] => {
+    return items
+      .map(item => {
+        if (this.isParticipant(item)) {
+          // Check if individual participant matches the query
+          const matches =
+            item.person.domainAttributes.firstName.toLowerCase().includes(query) ||
+            item.person.domainAttributes.lastName.toLowerCase().includes(query) ||
+            item.id.toString().includes(query);
+          
+          return matches ? item : null;
+        } else {
+          const filteredChildren = filterTree(item.participants);
+          
+          if (filteredChildren.length > 0) {
+            return item;
+          }
+          return null;
+        }
+      })
+      .filter((item): item is AnmeldungenViewModel => item !== null);
+  };
+  return filterTree(allElements);
+});
 
   updateSearch(event: Event) {
     const element = event.target as HTMLInputElement;

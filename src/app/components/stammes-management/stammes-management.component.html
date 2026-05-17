@@ -45,22 +45,8 @@
 
                     <div class="card-body p-2 overflow-y-auto" sortable data-list-id="main" (onDrop)="onDrop($event)"
                         style="background: #fafafa;">
-                        @for (p of filteredParticipants(); track p.id) {
-                        <div class="p-2 mb-1 border rounded shadow-sm cursor-move overflow-hidden {{ getGenderClass(p) }}"
-                            [attr.data-id]="p.id" style="font-size: 0.85rem;">
-                            <strong class="d-block text-truncate">
-                                {{ p.person.domainAttributes.firstName }}
-                                {{ p.person.domainAttributes.lastName }}
-                            </strong>
-                            @if (showIds()) {
-                            <small class="text-muted">#{{ p.id }}</small>
-                            }
-                            @if (showAge()) {
-                            <div class="small text-muted">
-                                Alter: {{ getAgeThisYear(p.personFields?.birthday) }}
-                            </div>
-                            }
-                        </div>
+                        @for (item of filteredParticipants(); track item.id) {
+                            <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: item }"></ng-container>
                         } @empty {
                         <div class="text-center text-muted mt-4 small">
                             Keine Teilnehmer gefunden.
