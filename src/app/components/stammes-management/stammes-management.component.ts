@@ -3,7 +3,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
 import { isValid, parseISO } from 'date-fns';
-import { debounceTime, distinctUntilChanged, filter, firstValueFrom, map, pairwise, startWith, switchMap, tap } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter, firstValueFrom, map, pairwise, startWith, switchMap, tap, of } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { SortableDirective } from '../../directives/sortable.directive';
@@ -18,6 +18,11 @@ interface GroupWrapper {
 
 type AnmeldungenViewModel = Participant | GroupWrapper;
 
+interface UnifiedFilter {
+  type: 'all' | 'gender' | 'maRolle' | 'roleId';
+  value: any;
+}
+
 @Component({
   selector: 'app-anmeldungen',
   standalone: true,
@@ -27,6 +32,8 @@ type AnmeldungenViewModel = Participant | GroupWrapper;
 })
 
 export class StammesManagementComponent {
+  readonly JSON = JSON;
+
   private readonly churchToolsService = inject(ChurchtoolsService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
@@ -44,6 +51,8 @@ export class StammesManagementComponent {
     selectedYear: this.fb.control<number | null>(null),
     selectedWeek: this.fb.control<number | null>(null),
   });
+
+  readonly activeFilter = signal<UnifiedFilter>({ type: 'all', value: null });
 
   groups = signal<AnmeldungenViewModel[][]>(Array.from({ length: 8 }, () => []));
 
@@ -92,6 +101,7 @@ export class StammesManagementComponent {
     debounceTime(1000),
     tap(() => {
       this.isDirty.set(false);
+      this.activeFilter.set({ type: 'all', value: null });
       this.formGroup.controls.selectedWeek.reset();
       this.groups.set(Array.from({ length: 8 }, () => []));
     }),
@@ -117,6 +127,7 @@ export class StammesManagementComponent {
     debounceTime(1000),
     tap(() => {
       this.isDirty.set(false);
+      this.activeFilter.set({ type: 'all', value: null });
       this.groups.set(Array.from({ length: 8 }, () => []));
     }),
     filter((value): value is number => !!value),
@@ -133,8 +144,16 @@ export class StammesManagementComponent {
       const viewModels = data.map(m => ({ ...m }));
       this.$anmeldungen.set(viewModels);
       this.$errorIds.set([]);
+      this.activeFilter.set({ type: 'all', value: null });
     });
   }
+
+  private readonly groupRoles$ = this.formGroup.controls.selectedWeek.valueChanges.pipe(
+    startWith(this.formGroup.controls.selectedWeek.value),
+    switchMap(weekId => weekId ? this.churchToolsService.getGroupRoles(weekId) : of([]))
+  );
+
+  public readonly dynamicRoles = toSignal(this.groupRoles$, { initialValue: [] });
 
   sortableOptions = {
     group: 'nested',
@@ -629,34 +648,40 @@ export class StammesManagementComponent {
   filteredParticipants = computed(() => {
     const query = this.searchTerm().toLowerCase().trim();
     const allElements = this.$anmeldungen();
+    const currentFilter = this.activeFilter();
 
-    if (!query) {
+    if (!query && currentFilter.type === 'all') {
       return allElements;
     }
 
-    // Helper function to recursively filter a list of view models
     const filterTree = (items: AnmeldungenViewModel[]): AnmeldungenViewModel[] => {
       return items
         .map(item => {
           if (this.isParticipant(item)) {
-            // Check if individual participant matches the query
-            const matches =
+            const matchesQuery = !query || 
               item.person.domainAttributes.firstName.toLowerCase().includes(query) ||
               item.person.domainAttributes.lastName.toLowerCase().includes(query) ||
               item.id.toString().includes(query);
-
-            return matches ? item : null;
+            let matchesDropdown = true;
+            if (currentFilter.type === 'gender') {
+              matchesDropdown = item.personFields?.sexId === currentFilter.value;
+            } else if (currentFilter.type === 'maRolle') {
+              matchesDropdown = this.getMaRolleValue(item) === currentFilter.value;
+            } else if (currentFilter.type === 'roleId') {
+              matchesDropdown = item.groupTypeRoleId === currentFilter.value;
+            }
+            return (matchesQuery && matchesDropdown) ? item : null;
           } else {
             const filteredChildren = filterTree(item.participants);
-
             if (filteredChildren.length > 0) {
-              return item;
+              return { ...item, participants: filteredChildren };
             }
             return null;
           }
         })
         .filter((item): item is AnmeldungenViewModel => item !== null);
     };
+
     return filterTree(allElements);
   });
 
@@ -670,7 +695,7 @@ export class StammesManagementComponent {
   }
 
   getWunschField(p: Participant): string | null {
-    if (!p.fields || !Array.isArray(p.fields)) return null;
+    if (!p.fields || !Array.isArray(p.fields) || !p.fields.find(f => f.name === 'Wunsch 1')) return null;
     const wunschField1 = p.fields.find(f => f.name === 'Wunsch 1');
     const wunschField2 = p.fields.find(f => f.name === 'Wunsch 2');
     const wunsch1 = wunschField1 ? (wunschField1.value ? String(wunschField1.value).trim() : null) : null;
@@ -682,6 +707,59 @@ export class StammesManagementComponent {
     } else if (wunsch2) {
       return `Wunsch 2: ${wunsch2}`;
     }
+    return 'Kein Wunsch angegeben';
+  }
+
+  getAnmerkungen(p: Participant): string | null {
+    if (!p.fields || !Array.isArray(p.fields) || !p.fields.find(f => f.name === 'Bemerkung zur Woche')) return null;
+    const Anmerkung = p.fields.find(f => f.name === 'Bemerkung zur Woche');
+    const anmerkung = Anmerkung ? (Anmerkung.value ? String(Anmerkung.value).trim() : null) : null;
+    if (anmerkung) {
+      return anmerkung;
+    }
     return null;
+  }
+
+  readonly availableMaRollen = computed(() => {
+    const participants = this.expandParticipants(this.$anmeldungen());
+    const rollen = new Set<string>();
+    participants.forEach(p => {
+      const maRolleVal = this.getMaRolleValue(p);
+      if (maRolleVal) rollen.add(maRolleVal);
+    });
+    return Array.from(rollen).sort();
+  });
+
+  getMaRolleValue(p: Participant): string | null {
+    if (!p.fields || !Array.isArray(p.fields)) return null;
+    const field = p.fields.find(f => f.name === 'MA-Rolle');
+    return field && field.value ? String(field.value).trim() : null;
+  }
+
+  getPoolCountForFilter(type: 'all' | 'gender' | 'maRolle' | 'roleId', value: any): number {
+    const pool = this.expandParticipants(this.$anmeldungen());
+    if (type === 'all') return pool.length;
+    return pool.filter(p => {
+      if (type === 'gender') return p.personFields?.sexId === value;
+      if (type === 'maRolle') return this.getMaRolleValue(p) === value;
+      if (type === 'roleId') return p.groupTypeRoleId === value;
+      return false;
+    }).length;
+  }
+
+  onFilterChange(event: Event) {
+    const selectElement = event.target as HTMLSelectElement;
+    const val = selectElement.value;
+    if (!val || val === 'all') {
+      this.activeFilter.set({ type: 'all', value: null });
+      return;
+    }
+    try {
+      const parsed = JSON.parse(val) as UnifiedFilter;
+      this.activeFilter.set(parsed);
+    } catch (e) {
+      console.error("Filter parsing error:", e);
+      this.activeFilter.set({ type: 'all', value: null });
+    }
   }
 }

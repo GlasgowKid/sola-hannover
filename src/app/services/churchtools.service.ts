@@ -48,9 +48,9 @@ export class ChurchtoolsService {
 
   getJahreManaged(yearId?: number): Observable<Group[]> {
     return this.groupTypeFilter("Jahr").pipe(
-        switchMap(params => from(churchtoolsClient.get<DomainObjectGroup[]>(`/groups/${yearId}/children`, params))),
-        map(dogs => dogs.map(dog => dog.domainIdentifier)),
-        switchMap(ids => ids.length > 0 ? from(churchtoolsClient.get<Group[]>(`/groups`, { ids })) : of([])),
+      switchMap(params => from(churchtoolsClient.get<DomainObjectGroup[]>(`/groups/${yearId}/children`, params))),
+      map(dogs => dogs.map(dog => dog.domainIdentifier)),
+      switchMap(ids => ids.length > 0 ? from(churchtoolsClient.get<Group[]>(`/groups`, { ids })) : of([])),
     );
   }
 
@@ -102,13 +102,28 @@ export class ChurchtoolsService {
   }
   updateGroupMemberFields(groupId: number, personId: number, fieldData: Record<number, any>): Observable<GroupMember> {
     return this.loggedIn$.pipe(
-      switchMap((loggedIn) => 
+      switchMap((loggedIn) =>
         loggedIn
           ? from(churchtoolsClient.patch<GroupMember>(`/groups/${groupId}/members/${personId}`, {
-              fields: fieldData
-            }))
+            fields: fieldData
+          }))
           : throwError(() => new Error("Not logged in"))
       )
+    );
+  }
+
+  getGroupRoles(groupId: number): Observable<any[]> {
+    return this.loggedIn$.pipe(
+      switchMap((loggedIn) =>
+        loggedIn
+          ? from(churchtoolsClient.get<any>(`/groups/${groupId}/roles`))
+          : of([])
+      ),
+      map(response => {
+        if (Array.isArray(response)) return response;
+        if (response && Array.isArray(response.data)) return response.data;
+        return [];
+      })
     );
   }
 }

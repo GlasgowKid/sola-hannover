@@ -21,11 +21,43 @@
                     Alle Teilnehmer
                     <span class="badge bg-white text-primary">{{ filteredParticipants().length }}</span>
                 </div>
+                <div class="p-1.5 bg-light border-bottom">
+                    <select class="form-select form-select-sm" (change)="onFilterChange($event)"
+                        style="font-size: 0.75rem;">
+                        <option value='{"type":"all","value":null}'>Kein Filter ({{ getPoolCountForFilter('all', null)
+                            }})</option>
+                        <optgroup label="Geschlecht">
+                            <option value='{"type":"gender","value":1}'>Jungs ({{ getPoolCountForFilter('gender', 1) }})
+                            </option>
+                            <option value='{"type":"gender","value":2}'>Mädchen ({{ getPoolCountForFilter('gender', 2)
+                                }})</option>
+                        </optgroup>
+                        @if (availableMaRollen().length > 0) {
+                        <optgroup label="MA-Rolle">
+                            @for (rolleName of availableMaRollen(); track rolleName) {
+                            <option [value]='JSON.stringify({type: "maRolle", value: rolleName})'>
+                                {{ rolleName }} ({{ getPoolCountForFilter('maRolle', rolleName) }})
+                            </option>
+                            }
+                        </optgroup>
+                        }
+                        @if (dynamicRoles().length > 0) {
+                        <optgroup label="Systemrolle">
+                            @for (role of dynamicRoles(); track role.id) {
+                            <option [value]='JSON.stringify({type: "roleId", value: role.groupTypeRoleId})'>
+                                {{ role.nameTranslated }} ({{ getPoolCountForFilter('roleId', role.groupTypeRoleId) }})
+                            </option>
+                            }
+                        </optgroup>
+                        }
+                    </select>
+                </div>
                 <div class="p-1.5 bg-light border-bottom input-group input-group-sm">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                     <input type="text" class="form-control border-start-0 ps-0" placeholder="Suchen..."
                         (input)="updateSearch($event)">
                 </div>
+
                 <div class="card-body p-1.5 overflow-y-auto" sortable data-list-id="main" (onDrop)="onDrop($event)"
                     style="background: #fafafa;">
                     @for (item of filteredParticipants(); track item.id) {
@@ -152,7 +184,7 @@
 <ng-template #itemTemplate let-item>
     @if (isParticipant(item)) {
     <div class="p-1 mb-1 border rounded shadow-sm cursor-move lh-sm {{ getGenderClass(item) }}" [attr.data-id]="item.id"
-        [attr.title]="getWunschField(item) ?? 'Kein Wunsch angegeben'" style="font-size: 0.8rem;">
+        [attr.title]="(getWunschField(item) || '') + (getAnmerkungen(item) || '')" style="font-size: 0.8rem;">
 
         <span class="fw-bold">{{ item.person.domainAttributes.firstName }} {{ item.person.domainAttributes.lastName
             }}</span>
