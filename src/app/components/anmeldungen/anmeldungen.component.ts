@@ -3,11 +3,12 @@ import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
-import { addYears, interval, isAfter, isValid, isWithinInterval, parseISO, startOfYear } from 'date-fns';
+import { addYears, differenceInYears, interval, isAfter, isValid, isWithinInterval, parseISO, startOfYear } from 'date-fns';
 import { debounceTime, distinctUntilChanged, filter, firstValueFrom, map, switchMap, tap } from 'rxjs';
 import { MemberStatus } from '../../../utils/ct-enums';
 import { GroupMember, GroupMemberFieldGroup } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
+import { SortableDirective } from '../../directives/sortable.directive';
 
 const PRICES = { CHILD: 80, ADULT: 120, DOG: 20, BASE: 80 };
 
@@ -24,10 +25,12 @@ type AnmeldungenViewModel = GroupMember & { familienpreis: Familienpreis };
 
 @Component({
   selector: 'app-anmeldungen',
-  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, NgxDatatableModule, PercentPipe],
+  standalone: true,
+  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, NgxDatatableModule, PercentPipe, SortableDirective],
   templateUrl: './anmeldungen.component.html',
   styleUrl: './anmeldungen.component.scss',
 })
+
 export class AnmeldungenComponent {
   private readonly churchToolsService = inject(ChurchtoolsService);
   private readonly fb = inject(FormBuilder);
@@ -46,7 +49,9 @@ export class AnmeldungenComponent {
   private readonly solawochen$ = this.formGroup.controls.selectedYear.valueChanges.pipe(
     distinctUntilChanged(),
     debounceTime(1000),
-    tap(() => this.formGroup.controls.selectedWeek.reset()),
+    tap(() => {
+      this.formGroup.controls.selectedWeek.reset();
+    }),
     filter((value): value is number => !!value),
     switchMap(groupId => this.churchToolsService.getSolawochen(groupId)),
   );
@@ -54,6 +59,8 @@ export class AnmeldungenComponent {
   private readonly anmeldungen$ = this.formGroup.controls.selectedWeek.valueChanges.pipe(
     distinctUntilChanged(),
     debounceTime(1000),
+    tap(() => {
+    }),
     filter((value): value is number => !!value),
     switchMap(groupId => this.churchToolsService.getAnmeldungen(groupId)),
   );
