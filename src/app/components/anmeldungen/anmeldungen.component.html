@@ -10,7 +10,7 @@
     @if (anmeldungen.length > 0) {
       <ngx-datatable
         #datatable
-        [rows]="anmeldungen"
+        [rows]="solaTeilnehmer.getFilteredRows(anmeldungen)"
         [messages]="{ emptyMessage: 'Keine Daten', totalMessage: 'insgesamt' }"
         [headerHeight]="50"
         [rowHeight]="50"
@@ -120,7 +120,20 @@
         }
 
         @if (solaTeilnehmer.wuenscheSpalte) {
-          <ngx-datatable-column name="Wünsche">
+          <ngx-datatable-column 
+            name="Wünsche" 
+            prop="id" 
+            [sortable]="true" 
+            [comparator]="solaTeilnehmer.wuenscheComparator"
+          >
+            <ng-template ngx-datatable-header-template let-column="column" let-sortFn="sortFn" let-sortDir="sortDir">
+              <ng-container
+                *ngTemplateOutlet="solaTeilnehmer.wuenscheHeader || fallbackHeader; context: { column, sortFn, sortDir }"
+              ></ng-container>
+              <ng-template #fallbackHeader let-column="column" let-sortFn="sortFn">
+                <span (click)="sortFn()" style="cursor: pointer">{{ column.name }}</span>
+              </ng-template>
+            </ng-template>
             <ng-template ngx-datatable-cell-template let-row="row">
               <ng-container
                 *ngTemplateOutlet="solaTeilnehmer.wuenscheSpalte; context: { row }"

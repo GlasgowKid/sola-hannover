@@ -32,6 +32,7 @@ export interface WunschStatus {
   styleUrl: './sola-teilnehmer-anmeldungen.component.scss',
 })
 export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
+  @ViewChild('wuenscheHeader') wuenscheHeader?: TemplateRef<any>;
   @ViewChild('wuenscheSpalte') wuenscheSpalte?: TemplateRef<{ row: GroupMember }>;
   @ViewChild('wuenscheDetails') wuenscheDetails?: TemplateRef<{ row: GroupMember }>;
 
@@ -107,6 +108,121 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       return queryTokens.every(token => searchString.includes(token));
     });
   });
+
+  wuenscheFilterModalRef?: BsModalRef;
+
+  readonly filterState = signal({
+    nein: true,
+    offen: true,
+    manuell: true,
+    gefunden: true,
+    zugeordnet: true
+  });
+
+  readonly pendingFilterState = signal({ ...this.filterState() });
+  readonly pendingSortState = signal<'asc' | 'desc' | 'none'>('none');
+
+  private activeSortFn?: () => void;
+  private activeSortDir?: 'asc' | 'desc' | 'none';
+
+  private lastInputRows: GroupMember[] = [];
+  private lastFilteredRows: GroupMember[] = [];
+  private lastFilterStateStr: string = '';
+
+  readonly hasActiveFilter = computed(() => {
+    const f = this.filterState();
+    return !f.nein || !f.offen || !f.manuell || !f.gefunden || !f.zugeordnet;
+  });
+
+  getFilteredRows(rows: GroupMember[]): GroupMember[] {
+    if (!this.$showWuensche()) return rows;
+
+    const f = this.filterState();
+    const filterStateStr = JSON.stringify(f);
+    
+    if (this.lastInputRows === rows && this.lastFilterStateStr === filterStateStr) {
+      return this.lastFilteredRows;
+    }
+    
+    this.lastInputRows = rows;
+    this.lastFilterStateStr = filterStateStr;
+
+    if (f.nein && f.offen && f.manuell && f.gefunden && f.zugeordnet) {
+      this.lastFilteredRows = rows;
+      return this.lastFilteredRows;
+    }
+
+    this.lastFilteredRows = rows.filter(row => {
+      const status = this.$wuenscheMap().get(row.id);
+      if (!status || !status.hasWunsch) return f.nein;
+      if (!status.allFound) return f.offen;
+      if (status.hasManual) return f.manuell;
+      if (!status.allSaved) return f.gefunden;
+      return f.zugeordnet;
+    });
+
+    return this.lastFilteredRows;
+  }
+
+  openWuenscheFilterModal(template: TemplateRef<any>, sortFn: any, sortDir: any) {
+    this.activeSortFn = sortFn;
+    this.activeSortDir = sortDir || 'none';
+    
+    this.pendingFilterState.set({ ...this.filterState() });
+    this.pendingSortState.set(this.activeSortDir!);
+
+    this.wuenscheFilterModalRef = this.modalService.show(template, { class: 'modal-sm' });
+  }
+
+  toggleFilter(key: keyof ReturnType<typeof this.filterState>, value: boolean) {
+    this.pendingFilterState.update(state => ({ ...state, [key]: value }));
+  }
+
+  resetWuenscheFilterAndSort() {
+    this.pendingFilterState.set({ nein: true, offen: true, manuell: true, gefunden: true, zugeordnet: true });
+    this.pendingSortState.set('none');
+  }
+
+  applyWuenscheFilterAndSort() {
+    this.filterState.set({ ...this.pendingFilterState() });
+    
+    const targetDir = this.pendingSortState();
+    let currentDir = this.activeSortDir || 'none';
+
+    // Geht den internen Sortierzyklus von ngx-datatable durch, bis die gewünschte Richtung erreicht ist
+    if (this.activeSortFn && currentDir !== targetDir) {
+      while (currentDir !== targetDir) {
+        this.activeSortFn();
+        if (currentDir === 'none') currentDir = 'asc';
+        else if (currentDir === 'asc') currentDir = 'desc';
+        else if (currentDir === 'desc') currentDir = 'none';
+      }
+    }
+
+    this.wuenscheFilterModalRef?.hide();
+  }
+
+  readonly wuenscheComparator = (propA: any, propB: any, rowA: GroupMember, rowB: GroupMember) => {
+    const getSortValue = (row: GroupMember) => {
+      const status = this.$wuenscheMap().get(row.id);
+      if (!status || !status.hasWunsch) return 5;
+      if (!status.allFound) return 1;
+      if (status.hasManual) return 2;
+      if (!status.allSaved) return 3;
+      return 4;
+    };
+
+    const valA = getSortValue(rowA);
+    const valB = getSortValue(rowB);
+
+    if (valA === valB) {
+      const nameA = `${rowA.person?.domainAttributes?.firstName || ''} ${rowA.person?.domainAttributes?.lastName || ''}`.trim();
+      const nameB = `${rowB.person?.domainAttributes?.firstName || ''} ${rowB.person?.domainAttributes?.lastName || ''}`.trim();
+      return nameA.localeCompare(nameB);
+    }
+
+    return valA - valB;
+  };
 
   private readonly modalService = inject(BsModalService);
   modalRef?: BsModalRef;

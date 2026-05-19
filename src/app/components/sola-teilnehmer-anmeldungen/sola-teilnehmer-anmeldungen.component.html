@@ -13,6 +13,76 @@
     </button>
   </div>
 
+  <ng-template #wuenscheHeader let-column="column" let-sortFn="sortFn" let-sortDir="sortDir">
+    <span 
+      style="cursor: pointer;"
+      class="d-inline-flex align-items-center fw-bold" 
+      (click)="openWuenscheFilterModal(wuenscheFilterModal, sortFn, sortDir)"
+    >
+      {{ column.name }}
+      @if (sortDir === 'asc') {
+        <i class="datatable-icon-up ms-1"></i>
+      } @else if (sortDir === 'desc') {
+        <i class="datatable-icon-down ms-1"></i>
+      }
+      
+      @if (hasActiveFilter()) {
+        <i class="datatable-icon-filter ms-1 text-primary"></i>
+      }
+    </span>
+  </ng-template>
+
+  <ng-template #wuenscheFilterModal>
+    <div class="modal-header">
+      <h5 class="modal-title m-0">Wünsche filtern & sortieren</h5>
+      <button type="button" class="btn-close" (click)="wuenscheFilterModalRef?.hide()"></button>
+    </div>
+    <div class="modal-body">
+      <h6 class="fw-bold mb-3">Sortierung</h6>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="radio" name="wSort" id="wSortNone" value="none" 
+               [checked]="pendingSortState() === 'none'" (change)="pendingSortState.set('none')">
+        <label class="form-check-label" for="wSortNone">Keine Sortierung</label>
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="radio" name="wSort" id="wSortAsc" value="asc" 
+               [checked]="pendingSortState() === 'asc'" (change)="pendingSortState.set('asc')">
+        <label class="form-check-label" for="wSortAsc">Aufsteigend (Offen &rarr; Nein)</label>
+      </div>
+      <div class="form-check mb-4">
+        <input class="form-check-input" type="radio" name="wSort" id="wSortDesc" value="desc" 
+               [checked]="pendingSortState() === 'desc'" (change)="pendingSortState.set('desc')">
+        <label class="form-check-label" for="wSortDesc">Absteigend (Nein &rarr; Offen)</label>
+      </div>
+
+      <h6 class="fw-bold mb-3">Filter</h6>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="wFilterOffen" [checked]="pendingFilterState().offen" (change)="toggleFilter('offen', $any($event.target).checked)">
+        <label class="form-check-label text-danger" for="wFilterOffen">ja (offen)</label>
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="wFilterManuell" [checked]="pendingFilterState().manuell" (change)="toggleFilter('manuell', $any($event.target).checked)">
+        <label class="form-check-label text-success" for="wFilterManuell">ja (manuell)</label>
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="wFilterGefunden" [checked]="pendingFilterState().gefunden" (change)="toggleFilter('gefunden', $any($event.target).checked)">
+        <label class="form-check-label text-success" for="wFilterGefunden">ja (gefunden)</label>
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="wFilterZugeordnet" [checked]="pendingFilterState().zugeordnet" (change)="toggleFilter('zugeordnet', $any($event.target).checked)">
+        <label class="form-check-label text-success" for="wFilterZugeordnet">ja (zugeordnet)</label>
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="wFilterNein" [checked]="pendingFilterState().nein" (change)="toggleFilter('nein', $any($event.target).checked)">
+        <label class="form-check-label" for="wFilterNein">nein</label>
+      </div>
+    </div>
+    <div class="modal-footer justify-content-between">
+      <button type="button" class="btn btn-outline-secondary" (click)="resetWuenscheFilterAndSort()">Zurücksetzen</button>
+      <button type="button" class="btn btn-primary" (click)="applyWuenscheFilterAndSort()">Anwenden</button>
+    </div>
+  </ng-template>
+
   <ng-template #wuenscheSpalte let-row="row">
     @if ($wuenscheMap().get(row.id); as status) {
       @if (!status.hasWunsch) {
