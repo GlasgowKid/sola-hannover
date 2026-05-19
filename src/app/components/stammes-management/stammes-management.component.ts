@@ -609,7 +609,6 @@ export class StammesManagementComponent {
     if (!birthday) return null;
     const birthDate = parseISO(String(birthday));
     if (!isValid(birthDate)) return null;
-
     const currentYear = new Date().getFullYear();
     return currentYear - birthDate.getFullYear();
   }
@@ -617,29 +616,23 @@ export class StammesManagementComponent {
   getAverageAge(group: AnmeldungenViewModel[]): number {
     const participants = this.expandParticipants(group);
     if (participants.length === 0) return 0;
-
-    const totalAge = participants.reduce((sum, member) => {
-      const age = this.getAgeThisYear(member.personFields?.birthday);
-      return sum + (age || 0);
-    }, 0);
-
-    return Math.round((totalAge / participants.length) * 10) / 10; // Added 1 decimal for better precision
+    const ages = participants
+      .map(m => this.getAgeThisYear(m.personFields?.birthday))
+      .filter((age): age is number => age !== null && age > 0);
+    if (ages.length === 0) return 0;
+    return ages.reduce((a, b) => a + b, 0) / ages.length;
   }
 
   getAgeVariance(group: AnmeldungenViewModel[]): number {
     const participants = this.expandParticipants(group);
     if (participants.length <= 1) return 0;
-
     const ages = participants
       .map(m => this.getAgeThisYear(m.personFields?.birthday))
-      .filter((age): age is number => age !== null);
-
+      .filter((age): age is number => age !== null && age > 0);
     if (ages.length === 0) return 0;
-
     const mean = ages.reduce((a, b) => a + b, 0) / ages.length;
     const squaredDiffs = ages.map(age => Math.pow(age - mean, 2));
     const variance = squaredDiffs.reduce((a, b) => a + b, 0) / ages.length;
-
     return Math.round(variance * 10) / 10;
   }
 
@@ -688,10 +681,6 @@ export class StammesManagementComponent {
   updateSearch(event: Event) {
     const element = event.target as HTMLInputElement;
     this.searchTerm.set(element.value);
-  }
-
-  private getAllParticipantsInGroup(group: AnmeldungenViewModel[]): AnmeldungenViewModel[] {
-    return group;
   }
 
   getWunschField(p: Participant): string | null {
