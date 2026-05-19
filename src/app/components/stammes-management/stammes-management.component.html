@@ -21,6 +21,7 @@
                     Alle Teilnehmer
                     <span class="badge bg-white text-primary">{{ filteredParticipants().length }}</span>
                 </div>
+                @if ($anmeldungen().length > 0;){
                 <div class="p-1.5 bg-light border-bottom">
                     <select class="form-select form-select-sm" (change)="onFilterChange($event)"
                         style="font-size: 0.75rem;">
@@ -57,7 +58,7 @@
                     <input type="text" class="form-control border-start-0 ps-0" placeholder="Suchen..."
                         (input)="updateSearch($event)">
                 </div>
-
+                }
                 <div class="card-body p-1.5 overflow-y-auto" sortable data-list-id="main" (onDrop)="onDrop($event)"
                     style="background: #fafafa;">
                     @for (item of filteredParticipants(); track item.id) {
@@ -102,6 +103,7 @@
     </div>
     <div class="border-top d-flex justify-content-between align-items-center bg-white flex-shrink-0 style-compact p-0"
         style="font-size: 0.8rem; height: 40px;">
+        @if ($anmeldungen().length > 0;){
         <div class="d-flex align-items-center gap-3 p-0 m-0 h-100">
             <div class="form-check form-switch px-2" style="transform: scale(0.9); transform-origin: left center;" title="Zeigt Debug Informationen und gibt Zugriff auf langsame Synchronisation">
                 <input class="form-check-input" type="checkbox" role="switch" id="idToggle" [checked]="showIds()"
@@ -162,6 +164,7 @@
                 </button>
             </div>
         </div>
+        }
     </div>
 </div>
 @if ($progress() > 0) {
