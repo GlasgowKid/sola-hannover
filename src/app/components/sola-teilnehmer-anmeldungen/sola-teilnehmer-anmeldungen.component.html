@@ -177,7 +177,7 @@
           [headerHeight]="40"
           [rowHeight]="50"
           [footerHeight]="50"
-          [limit]="$tablePageLimit()"
+          [limit]="5"
           [selected]="resolveState()?.selected || []"
           selectionType="single"
           (selectedChange)="onCandidateSelect({ selected: $event })"

@@ -74,8 +74,6 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
 
   readonly searchQuery = signal<string>('');
 
-  readonly $tablePageLimit = computed(() => 5);
-
   readonly filteredCandidates = computed<GroupMember[]>(() => {
     const state = this.resolveState();
     if (!state) return [];
