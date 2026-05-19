@@ -71,6 +71,43 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
 
   readonly $unsavedIds = computed<number[]>(() => this.$unsavedPayloads().map(p => p.member.id));
 
+  readonly searchQuery = signal<string>('');
+
+  readonly $tablePageLimit = computed(() => 5);
+
+  readonly filteredCandidates = computed<GroupMember[]>(() => {
+    const state = this.resolveState();
+    if (!state) return [];
+    
+    if (state.candidates && state.candidates.length > 0) {
+      return state.candidates;
+    }
+
+    // Sonderzeichen durch Leerzeichen ersetzen (behält nur Buchstaben, Zahlen und Leerzeichen)
+    const query = this.searchQuery().toLowerCase().replace(/[^\p{L}\d\s]/gu, ' ').trim();
+    
+    // Aktuellen Teilnehmer aus der Liste filtern
+    const currentMember = this.anmeldungen().find(m => m.id === state.rowId);
+    const currentPersonId = currentMember?.personId;
+
+    const all = this.anmeldungen().filter(m => m.personId !== currentPersonId);
+    
+    if (!query) return all;
+
+    const queryTokens = query.split(/\s+/);
+
+    return all.filter(member => {
+      const first = member.person?.domainAttributes?.firstName?.toLowerCase() || '';
+      const last = member.person?.domainAttributes?.lastName?.toLowerCase() || '';
+      const sex = member.personFields?.sexId === 1 ? 'm' : member.personFields?.sexId === 2 ? 'w' : '';
+      const zip = member.personFields?.zip?.toString().toLowerCase() || '';
+      const city = member.personFields?.city?.toString().toLowerCase() || '';
+      
+      const searchString = `${first} ${last} ${sex} ${zip} ${city}`;
+      return queryTokens.every(token => searchString.includes(token));
+    });
+  });
+
   private readonly modalService = inject(BsModalService);
   modalRef?: BsModalRef;
 
@@ -253,7 +290,12 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     return null;
   }
 
-  openResolveModal(template: TemplateRef<any>, rowId: number, fieldName: string, candidates: GroupMember[]) {
+  openResolveModal(template: TemplateRef<any>, rowId: number, fieldName: string, candidates: GroupMember[] = []) {
+    const status = this.$wuenscheMap().get(rowId);
+    const wunsch = status?.wuensche.find(w => w.fieldName === fieldName);
+    const wunschText = wunsch?.text || wunsch?.rawValue || '';
+
+    this.searchQuery.set(wunschText);
     this.resolveState.set({
       rowId,
       fieldName,
@@ -267,16 +309,19 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     this.resolveState.update(state => state ? { ...state, selected: [...selected] } : null);
   }
 
+  enableManualSearch() {
+    this.resolveState.update(state => state ? { ...state, candidates: [] } : null);
+  }
+
   confirmModalSelection() {
     const state = this.resolveState();
     if (state && state.selected.length === 1) {
-      const selectedIndex = state.candidates.findIndex(c => c.id === state.selected[0].id);
-      this.confirmMatch(state.rowId, state.fieldName, selectedIndex);
+      this.confirmMatch(state.rowId, state.fieldName, state.selected[0]);
       this.modalRef?.hide();
     }
   }
 
-  confirmMatch(rowId: number, fieldName: string, selectedIndex?: number) {
+  confirmMatch(rowId: number, fieldName: string, selectedIndexOrMember?: number | GroupMember) {
     this.$wuenscheMap.update(currentMap => {
       const newMap = new Map(currentMap);
       const oldStatus = newMap.get(rowId);
@@ -287,7 +332,18 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
 
       if (wIndex > -1) {
         const wunsch = { ...newStatus.wuensche[wIndex] };
-        wunsch.selectedIndex = selectedIndex !== undefined ? selectedIndex : 0;
+
+        if (typeof selectedIndexOrMember === 'object' && selectedIndexOrMember !== null) {
+          let idx = wunsch.members.findIndex(m => m.id === selectedIndexOrMember.id);
+          if (idx === -1) {
+            wunsch.members = [...wunsch.members, selectedIndexOrMember];
+            idx = wunsch.members.length - 1;
+          }
+          wunsch.selectedIndex = idx;
+        } else {
+          wunsch.selectedIndex = selectedIndexOrMember !== undefined ? selectedIndexOrMember : 0;
+        }
+        
         wunsch.isManuallyConfirmed = true;
         newStatus.wuensche[wIndex] = wunsch;
 

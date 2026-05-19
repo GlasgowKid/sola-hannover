@@ -84,13 +84,30 @@
         Bitte wähle die korrekte Person für <strong>{{ resolveState()?.fieldName }}</strong> aus:
       </p>
 
-      @if (resolveState()?.candidates; as candidates) {
+      @if (!resolveState()?.candidates?.length) {
+        <input 
+          type="text" 
+          class="form-control mb-3" 
+          placeholder="Teilnehmer suchen..." 
+          [value]="searchQuery()" 
+          (input)="searchQuery.set($any($event.target).value)"
+        >
+      } @else {
+        <div class="mb-3">
+          <button type="button" class="btn btn-outline-primary" (click)="enableManualSearch()">
+            Alle Teilnehmer durchsuchen
+          </button>
+        </div>
+      }
+
         <ngx-datatable
           class="bootstrap"
-          [rows]="candidates"
+          [rows]="filteredCandidates()"
+          [messages]="{ emptyMessage: 'Keine Daten', totalMessage: 'insgesamt', selectedMessage: '' }"
           [headerHeight]="40"
           [rowHeight]="50"
-          [limit]="5"
+          [footerHeight]="50"
+          [limit]="$tablePageLimit()"
           [selected]="resolveState()?.selected || []"
           selectionType="single"
           (selectedChange)="onCandidateSelect({ selected: $event })"
@@ -118,7 +135,6 @@
           ></ngx-datatable-column>
           <ngx-datatable-column prop="personFields.city" name="Ort"></ngx-datatable-column>
         </ngx-datatable>
-      }
     </div>
 
     <div class="modal-footer">
