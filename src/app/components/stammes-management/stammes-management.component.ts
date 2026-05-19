@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, signal, HostListener } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal, HostListener, effect } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
@@ -145,6 +145,15 @@ export class StammesManagementComponent {
       this.$anmeldungen.set(viewModels);
       this.$errorIds.set([]);
       this.activeFilter.set({ type: 'all', value: null });
+    });
+    effect(() => {
+      const jahreList = this.$jahre();
+      if (jahreList && jahreList.length > 0) {
+        const sortedJahre = [...jahreList].sort((a, b) => b.name.localeCompare(a.name));
+        if (this.formGroup.controls.selectedYear.value === null) {
+          this.formGroup.controls.selectedYear.setValue(sortedJahre[0].id);
+        }
+      }
     });
   }
 
@@ -620,7 +629,7 @@ export class StammesManagementComponent {
       .map(m => this.getAgeThisYear(m.personFields?.birthday))
       .filter((age): age is number => age !== null && age > 0);
     if (ages.length === 0) return 0;
-    return ages.reduce((a, b) => a + b, 0) / ages.length;
+    return Math.round(10 * ages.reduce((a, b) => a + b, 0) / ages.length) / 10;
   }
 
   getAgeVariance(group: AnmeldungenViewModel[]): number {
