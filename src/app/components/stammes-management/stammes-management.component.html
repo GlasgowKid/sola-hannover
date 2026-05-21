@@ -1,17 +1,9 @@
-<div [formGroup]="formGroup" class="input-group mb-2 input-group-sm">
-    @if ($jahre(); as jahre) {
-    <select formControlName="selectedYear" class="form-select" [class.text-secondary]="!formGroup.value.selectedYear">
-        <option [ngValue]="null" selected disabled>Jahr</option>
-        @for (j of jahre; track j.id) { <option [ngValue]="j.id">{{ j.name }}</option> }
-    </select>
-    }
-    @if ($solawochen(); as solawochen) {
-    <select formControlName="selectedWeek" class="form-select" [class.text-secondary]="!formGroup.value.selectedWeek">
-        <option [ngValue]="null" selected disabled>Solawoche</option>
-        @for (w of solawochen; track w.id) { <option [ngValue]="w.id">{{ w.name }}</option> }
-    </select>
-    }
-</div>
+<app-sola-selector
+    [jahre]="$jahre()"
+    [solawochen]="$solawochen()"
+    (yearSelected)="onYearSelected($event)"
+    (weekSelected)="onWeekSelected($event)"
+></app-sola-selector>
 <div class="d-flex flex-column p-0 m-0" style="height: calc(100vh - 130px);">
     <div class="row flex-grow-1 overflow-hidden pt-2">
         <div class="col-lg-2 col-md-3 d-flex flex-column h-100">

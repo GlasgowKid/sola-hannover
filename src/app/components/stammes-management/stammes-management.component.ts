@@ -1,13 +1,13 @@
-import { Component, computed, DestroyRef, inject, signal, HostListener, effect } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, computed, DestroyRef, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
 import { isValid, parseISO } from 'date-fns';
-import { debounceTime, distinctUntilChanged, filter, firstValueFrom, map, pairwise, startWith, switchMap, tap, of } from 'rxjs';
+import { distinctUntilChanged, firstValueFrom, of, Subject, switchMap } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
-import { ChurchtoolsService } from '../../services/churchtools.service';
 import { SortableDirective } from '../../directives/sortable.directive';
-import { NgTemplateOutlet } from '@angular/common';
+import { ChurchtoolsService } from '../../services/churchtools.service';
+import { SolaSelectorComponent } from '../sola-selector/sola-selector.component';
 
 type Participant = GroupMember;
 
@@ -26,18 +26,13 @@ interface UnifiedFilter {
 @Component({
   selector: 'app-anmeldungen',
   standalone: true,
-  imports: [ReactiveFormsModule, NgxDatatableModule, SortableDirective, NgTemplateOutlet],
+  imports: [NgxDatatableModule, SortableDirective, NgTemplateOutlet, SolaSelectorComponent],
   templateUrl: './stammes-management.component.html',
   styleUrl: './stammes-management.component.scss',
 })
-
 export class StammesManagementComponent {
   readonly JSON = JSON;
-
   private readonly churchToolsService = inject(ChurchtoolsService);
-  private readonly fb = inject(FormBuilder);
-  private readonly destroyRef = inject(DestroyRef);
-
   readonly isDirty = signal<boolean>(false);
 
   @HostListener('window:beforeunload', ['$event'])
@@ -47,10 +42,11 @@ export class StammesManagementComponent {
     }
   }
 
-  readonly formGroup = this.fb.group({
-    selectedYear: this.fb.control<number | null>(null),
-    selectedWeek: this.fb.control<number | null>(null),
-  });
+  readonly selectedYear = signal<number | null>(null);
+  readonly selectedWeek = signal<number | null>(null);
+
+  private readonly yearSelectedSubject = new Subject<number>();
+  private readonly weekSelectedSubject = new Subject<number>();
 
   readonly activeFilter = signal<UnifiedFilter>({ type: 'all', value: null });
 
@@ -79,58 +75,15 @@ export class StammesManagementComponent {
   }
 
   readonly $groupTypes = toSignal(this.churchToolsService.getGroupTypes());
-  readonly $jahre = toSignal(this.churchToolsService.getJahreManaged(73));
+  readonly $jahre = toSignal(this.churchToolsService.getJahre());
 
-  private readonly $selectedWeek = toSignal(this.formGroup.controls.selectedWeek.valueChanges);
-
-  private readonly solawochen$ = this.formGroup.controls.selectedYear.valueChanges.pipe(
-    startWith(this.formGroup.controls.selectedYear.value),
-    pairwise(),
-    filter(([prev, next]) => {
-      if (this.isDirty() && next !== prev) {
-        const discard = confirm('Sie haben ungespeicherte Änderungen in der aktuellen Woche. Möchten Sie diese verwerfen?');
-        if (!discard) {
-          this.formGroup.controls.selectedYear.setValue(prev, { emitEvent: false });
-          return false;
-        }
-      }
-      return true;
-    }),
-    map(([prev, next]) => next),
+  private readonly solawochen$ = this.yearSelectedSubject.pipe(
     distinctUntilChanged(),
-    debounceTime(1000),
-    tap(() => {
-      this.isDirty.set(false);
-      this.activeFilter.set({ type: 'all', value: null });
-      this.formGroup.controls.selectedWeek.reset();
-      this.groups.set(Array.from({ length: 8 }, () => []));
-    }),
-    filter((value): value is number => !!value),
     switchMap(groupId => this.churchToolsService.getSolawochen(groupId)),
   );
 
-  private readonly anmeldungen$ = this.formGroup.controls.selectedWeek.valueChanges.pipe(
-    startWith(this.formGroup.controls.selectedWeek.value),
-    pairwise(),
-    filter(([prev, next]) => {
-      if (this.isDirty() && next !== prev) {
-        const discard = confirm('Sie haben ungespeicherte Änderungen in der aktuellen Woche. Möchten Sie diese verwerfen?');
-        if (!discard) {
-          this.formGroup.controls.selectedWeek.setValue(prev, { emitEvent: false });
-          return false;
-        }
-      }
-      return true;
-    }),
-    map(([prev, next]) => next),
+  private readonly anmeldungen$ = this.weekSelectedSubject.pipe(
     distinctUntilChanged(),
-    debounceTime(1000),
-    tap(() => {
-      this.isDirty.set(false);
-      this.activeFilter.set({ type: 'all', value: null });
-      this.groups.set(Array.from({ length: 8 }, () => []));
-    }),
-    filter((value): value is number => !!value),
     switchMap(groupId => this.churchToolsService.getAnmeldungen(groupId)),
   );
 
@@ -146,19 +99,38 @@ export class StammesManagementComponent {
       this.$errorIds.set([]);
       this.activeFilter.set({ type: 'all', value: null });
     });
-    effect(() => {
-      const jahreList = this.$jahre();
-      if (jahreList && jahreList.length > 0) {
-        const sortedJahre = [...jahreList].sort((a, b) => b.name.localeCompare(a.name));
-        if (this.formGroup.controls.selectedYear.value === null) {
-          this.formGroup.controls.selectedYear.setValue(sortedJahre[0].id);
-        }
-      }
-    });
   }
 
-  private readonly groupRoles$ = this.formGroup.controls.selectedWeek.valueChanges.pipe(
-    startWith(this.formGroup.controls.selectedWeek.value),
+  onYearSelected(yearId: number) {
+    if (this.isDirty() && this.selectedYear() !== yearId) {
+      const discard = confirm('Sie haben ungespeicherte Änderungen in der aktuellen Woche. Möchten Sie diese verwerfen?');
+      if (!discard) {
+        return;
+      }
+    }
+    this.isDirty.set(false);
+    this.activeFilter.set({ type: 'all', value: null });
+    this.selectedYear.set(yearId);
+    this.selectedWeek.set(null);
+    this.groups.set(Array.from({ length: 8 }, () => []));
+    this.yearSelectedSubject.next(yearId);
+  }
+
+  onWeekSelected(weekId: number) {
+    if (this.isDirty() && this.selectedWeek() !== weekId) {
+      const discard = confirm('Sie haben ungespeicherte Änderungen in der aktuellen Woche. Möchten Sie diese verwerfen?');
+      if (!discard) {
+        return;
+      }
+    }
+    this.isDirty.set(false);
+    this.activeFilter.set({ type: 'all', value: null });
+    this.selectedWeek.set(weekId);
+    this.groups.set(Array.from({ length: 8 }, () => []));
+    this.weekSelectedSubject.next(weekId);
+  }
+
+  private readonly groupRoles$ = this.weekSelectedSubject.pipe(
     switchMap(weekId => weekId ? this.churchToolsService.getGroupRoles(weekId) : of([]))
   );
 
@@ -183,7 +155,7 @@ export class StammesManagementComponent {
   }
 
   saveGroups() {
-    const weekId = this.formGroup.value.selectedWeek;
+    const weekId = this.selectedWeek();
     if (!weekId) return;
     const serializeItem = (item: AnmeldungenViewModel): any => {
       if (this.isParticipant(item)) {
@@ -200,7 +172,7 @@ export class StammesManagementComponent {
   }
 
   loadGroups() {
-    const weekId = this.formGroup.value.selectedWeek;
+    const weekId = this.selectedWeek();
     if (!weekId) return;
 
     const savedData = localStorage.getItem(`groups_week_${weekId}`);
@@ -248,7 +220,7 @@ export class StammesManagementComponent {
   }
 
   async saveGroupsServer() {
-    const groupId = this.formGroup.value.selectedWeek;
+    const groupId = this.selectedWeek();
     if (!groupId || this.$progress() > 0) return;
     try {
       const allFields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
@@ -328,7 +300,7 @@ export class StammesManagementComponent {
   }
 
   async saveGroupsServerSlow() {
-    const groupId = this.formGroup.value.selectedWeek;
+    const groupId = this.selectedWeek();
     if (!groupId || this.$progress() > 0) return;
     try {
       const allFields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
