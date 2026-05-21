@@ -1,173 +1,141 @@
-import { CurrencyPipe, DatePipe, PercentPipe } from '@angular/common';
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
-import { addYears, interval, isAfter, isValid, isWithinInterval, parseISO, startOfYear } from 'date-fns';
-import { debounceTime, distinctUntilChanged, filter, firstValueFrom, map, switchMap, tap } from 'rxjs';
-import { MemberStatus } from '../../../utils/ct-enums';
-import { GroupMember, GroupMemberFieldGroup } from '../../../utils/ct-types';
+import { parseISO, startOfYear } from 'date-fns';
+import { Subject, distinctUntilChanged, firstValueFrom, switchMap } from 'rxjs';
+import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
+import { SofaAnmeldungViewModel, SofaAnmeldungenComponent } from '../sofa-anmeldungen/sofa-anmeldungen.component';
+import { SolaSelectorComponent } from '../sola-selector/sola-selector.component';
+import { SolaTeilnehmerAnmeldungenComponent } from '../sola-teilnehmer-anmeldungen/sola-teilnehmer-anmeldungen.component';
 
-const PRICES = { CHILD: 80, ADULT: 120, DOG: 20, BASE: 80 };
-
-interface Familienpreis {
-  personenAnzahl5Bis12: number;
-  personenAnzahlAb13: number;
-  anzahlHunde: number;
-  invalid: boolean;
-  anzahlFamilienmitglieder: number;
-  gesamt: number;
+export interface MemberUpdatePayload {
+  member: GroupMember;
+  updates: { fieldName: string; value: any }[];
 }
-
-type AnmeldungenViewModel = GroupMember & { familienpreis: Familienpreis };
 
 @Component({
   selector: 'app-anmeldungen',
-  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, NgxDatatableModule, PercentPipe],
+  standalone: true,
+  imports: [
+    DatePipe,
+    NgTemplateOutlet,
+    NgxDatatableModule,
+    SofaAnmeldungenComponent,
+    SolaSelectorComponent,
+    SolaTeilnehmerAnmeldungenComponent,
+  ],
   templateUrl: './anmeldungen.component.html',
   styleUrl: './anmeldungen.component.scss',
 })
 export class AnmeldungenComponent {
   private readonly churchToolsService = inject(ChurchtoolsService);
-  private readonly fb = inject(FormBuilder);
-  private readonly destroyRef = inject(DestroyRef);
 
-  readonly formGroup = this.fb.group({
-    selectedYear: this.fb.control<number | null>(null),
-    selectedWeek: this.fb.control<number | null>(null),
-  });
-
-  readonly $groupTypes = toSignal(this.churchToolsService.getGroupTypes());
   readonly $jahre = toSignal(this.churchToolsService.getJahre());
+  readonly $selectedWeek = signal<number | null>(null);
+  readonly $updateProgress = signal<number>(0);
 
-  private readonly $selectedWeek = toSignal(this.formGroup.controls.selectedWeek.valueChanges);
+  private readonly yearSelectedSubject = new Subject<number>();
+  private readonly weekSelectedSubject = new Subject<number>();
 
-  private readonly solawochen$ = this.formGroup.controls.selectedYear.valueChanges.pipe(
+  private readonly solawochen$ = this.yearSelectedSubject.pipe(
     distinctUntilChanged(),
-    debounceTime(1000),
-    tap(() => this.formGroup.controls.selectedWeek.reset()),
-    filter((value): value is number => !!value),
-    switchMap(groupId => this.churchToolsService.getSolawochen(groupId)),
+    switchMap((groupId) => this.churchToolsService.getSolawochen(groupId)),
   );
 
-  private readonly anmeldungen$ = this.formGroup.controls.selectedWeek.valueChanges.pipe(
+  private readonly anmeldungen$ = this.weekSelectedSubject.pipe(
     distinctUntilChanged(),
-    debounceTime(1000),
-    filter((value): value is number => !!value),
-    switchMap(groupId => this.churchToolsService.getAnmeldungen(groupId)),
+    switchMap((groupId) => this.churchToolsService.getAnmeldungen(groupId)),
   );
 
-  readonly $anmeldungen = signal<AnmeldungenViewModel[]>([]);
-  readonly $errorIds = signal<number[]>([]);
-  readonly $progress = signal<number>(0);
+  readonly $anmeldungen = signal<GroupMember[]>([]);
   readonly $solawochen = toSignal(this.solawochen$);
 
-  private readonly $priceRefDate = computed<Date>(() => {
+  readonly $priceRefDate = computed<Date>(() => {
     const solawoche = this.$solawochen()?.find(s => s.id === this.$selectedWeek());
     const dateStr = solawoche?.information?.dateOfFoundation;
     return dateStr ? parseISO(String(dateStr)) : startOfYear(new Date());
   });
 
-  readonly $isFamiliensola = computed(() =>
-    this.$anmeldungen().some(a => a.familienpreis.anzahlFamilienmitglieder > 1)
-  );
+  readonly $displayData = signal<SofaAnmeldungViewModel[]>([]);
 
   constructor() {
-    this.anmeldungen$.pipe(takeUntilDestroyed()).subscribe(data => {
-      const viewModels = data.map(m => ({ ...m, familienpreis: this.calculateFamilienpreis(m) }));
-      this.$anmeldungen.set(viewModels);
-      this.$errorIds.set([]);
+    this.anmeldungen$.pipe(takeUntilDestroyed()).subscribe((data) => {
+      this.$anmeldungen.set(data);
     });
   }
 
-  private calculateFamilienpreis(anmeldung: GroupMember): Familienpreis {
-    const birthdates: Date[] = [];
-    let invalid = false;
-
-    const addDate = (val: unknown) => {
-      const d = parseISO(String(val));
-      if (isValid(d)) birthdates.push(d);
-      else invalid = true;
-    };
-
-    if (anmeldung.personFields?.birthday) addDate(anmeldung.personFields.birthday);
-    else invalid = true;
-
-    let anzahlFamilienmitglieder = 1;
-    for (let i = 2; i <= 8; i++) {
-      const familienmitglied = anmeldung.fields.filter(({ name }) => name.endsWith(`Familienmitglied ${i}`));
-      if (familienmitglied.length) {
-        anzahlFamilienmitglieder++;
-        const geburtstagFeld = familienmitglied.find(f => f.name.startsWith("Geburtstag"));
-        if (geburtstagFeld?.value) addDate(geburtstagFeld?.value);
-        else invalid = true;
-      }
-    }
-
-    let personenAnzahl5Bis12 = 0;
-    let personenAnzahlAb13 = 0;
-    const refDate = this.$priceRefDate();
-    const limitFull = addYears(refDate, -13);
-    const limitFree = addYears(refDate, -5);
-    const rangeReduced = interval(limitFree, limitFull);
-
-    birthdates.forEach(birthday => {
-      if (isAfter(limitFull, birthday)) personenAnzahlAb13++;
-      else if (isWithinInterval(birthday, rangeReduced)) personenAnzahl5Bis12++;
-    });
-
-    const anzahlHunde = Number(anmeldung.fields.find(({ name }) => name === "Hunde")?.value || 0);
-    if (isNaN(anzahlHunde)) invalid = true;
-
-    const gesamt = (personenAnzahl5Bis12 * PRICES.CHILD) + (personenAnzahlAb13 * PRICES.ADULT) + (anzahlHunde * PRICES.DOG) + PRICES.BASE;
-    return { personenAnzahl5Bis12, personenAnzahlAb13, anzahlHunde, gesamt, anzahlFamilienmitglieder, invalid };
+  onYearSelected(yearId: number) {
+    this.$anmeldungen.set([]);
+    this.yearSelectedSubject.next(yearId);
   }
 
-  private performSingleUpdate(groupId: number, anmeldung: AnmeldungenViewModel, fieldDef: GroupMemberFieldGroup): Promise<GroupMember> {
-    const value = anmeldung.familienpreis.gesamt;
-    const { id, name, sortKey } = fieldDef;
-    const fields = [...anmeldung.fields, { id, name, value, sortKey }];
-    const groupMemberStatus = MemberStatus.ACTIVE;
-
-    return firstValueFrom(
-      this.churchToolsService.updateGroupMember(groupId, anmeldung.personId, { fields, groupMemberStatus })
-    );
+  onWeekSelected(weekId: number) {
+    this.$selectedWeek.set(weekId);
+    this.weekSelectedSubject.next(weekId);
   }
 
-  async updateFamilienpreis() {
-    const groupId = this.formGroup.value.selectedWeek;
-    if (!groupId || this.$progress() > 0) return;
+  onSofaDataProcessed(anmeldungen: SofaAnmeldungViewModel[]) {
+    this.$displayData.set(anmeldungen);
+  }
+
+  async performCentralUpdate(payloads: MemberUpdatePayload[]) {
+    const groupId = this.$selectedWeek();
+    if (!groupId || this.$updateProgress() > 0 || payloads.length === 0) return;
 
     try {
-      const fields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
-      const familienpreisField = fields?.find(f => f.referenceName === "familienpreis");
+      this.$updateProgress.set(0.01);
 
-      const toUpdate = this.$anmeldungen().filter(m => m.groupMemberStatus === MemberStatus.REQUESTED);
-      if (!familienpreisField || toUpdate.length === 0) return;
-
-      this.$progress.set(0.01);
-
-      for (const [index, anmeldung] of toUpdate.entries()) {
+      for (const [index, item] of payloads.entries()) {
         try {
-          const updatedMember = await this.performSingleUpdate(groupId, anmeldung, familienpreisField);
-          const { fields, personFields, familienpreis } = anmeldung;
-          const merged = { ...updatedMember, fields, personFields, familienpreis };
-          this.$anmeldungen.update(list => list.map(m => m.id === merged.id ? merged : m));
+          // ChurchTools API erwartet für individuelle Felder die Feld-ID als Key
+          const ctFieldsToUpdate: Record<string, any> = {};
 
+          for (const u of item.updates) {
+            const existingField = item.member.fields.find(f => f.name === u.fieldName || f.name.toLowerCase() === u.fieldName.toLowerCase());
+            if (existingField) {
+              const normalizedExisting = existingField?.value == null ? '' : String(existingField.value);
+              const normalizedNew = u.value == null ? '' : String(u.value);
+
+              // Nur in den PATCH-Request aufnehmen, wenn sich der Wert wirklich geändert hat
+              if (normalizedExisting !== normalizedNew) {
+                ctFieldsToUpdate[existingField.id] = u.value;
+              }
+            } else {
+              console.warn(`Feld '${u.fieldName}' wurde beim Teilnehmer nicht gefunden und übersprungen.`);
+            }
+          }
+
+          if (Object.keys(ctFieldsToUpdate).length === 0) {
+            this.$updateProgress.set((index + 1) / payloads.length);
+            continue; // Keine echten Änderungen -> API-Call überspringen!
+          }
+
+          const updatedMember = await firstValueFrom(
+            this.churchToolsService.updateGroupMember(groupId, item.member.personId, {
+              fields: ctFieldsToUpdate as any
+            })
+          );
+
+          // Das Original-Objekt im zentralen State aktualisieren,
+          // da item.member nur ein flaches ViewModel (Klon) aus SofaAnmeldungen ist!
+          const originalMember = this.$anmeldungen().find(m => m.id === item.member.id);
+          if (originalMember) {
+            originalMember.fields = updatedMember.fields;
+          }
         } catch (err) {
-          console.error(`Fehler ID ${anmeldung.id}`, err);
-          this.$errorIds.update(ids => [...ids, anmeldung.id]);
+          console.error(`Fehler ID ${item.member.id}`, err);
         }
 
-        this.$progress.set((index + 1) / toUpdate.length);
-        await new Promise(resolve => setTimeout(resolve, 100));
+        this.$updateProgress.set((index + 1) / payloads.length);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Rate Limit
       }
-
+      this.$anmeldungen.set([...this.$anmeldungen()]);
     } catch (err) {
       console.error("Globaler Fehler", err);
     } finally {
-      setTimeout(() => this.$progress.set(0), 500);
+      setTimeout(() => this.$updateProgress.set(0), 500);
     }
   }
 }

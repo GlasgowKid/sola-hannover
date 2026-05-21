@@ -1,175 +1,173 @@
-<div class="container d-flex flex-column">
-  <div [formGroup]="formGroup" class="input-group mb-3">
-    @if ($jahre(); as jahre) {
-      <select
-        formControlName="selectedYear"
-        class="form-select"
-        [class.text-secondary]="!formGroup.value.selectedYear"
-      >
-        <option [ngValue]="null" selected disabled>Jahr</option>
-        @for (jahr of jahre; track jahr.id) {
-          <option [ngValue]="jahr.id">{{ jahr.name }}</option>
+<ng-template #memberDetailsTemplate let-row="row" let-isModal="isModal">
+  <div class="d-flex justify-content-between align-items-center p-5">
+    @if (row.displayFields && row.displayFields.length) {
+      <dl>
+        @if (row.personFields.street || row.personFields.zip || row.personFields.city) {
+          <dt>Adresse</dt>
+          <dd>
+            {{ row.personFields.street }}, {{ row.personFields.zip }}
+            {{ row.personFields.city }}
+          </dd>
         }
-      </select>
-    }
-    @if ($solawochen(); as solawochen) {
-      <select
-        formControlName="selectedWeek"
-        class="form-select"
-        [class.text-secondary]="!formGroup.value.selectedWeek"
-      >
-        <option [ngValue]="null" selected disabled>Solawoche</option>
-        @for (solawoche of solawochen; track solawoche.id) {
-          <option [ngValue]="solawoche.id">
-            {{ solawoche.name }}
-          </option>
+        @for (field of row.displayFields; track field.name) {
+          <dt>{{ field.name }}</dt>
+          <dd>{{ field.value }}</dd>
         }
-      </select>
+      </dl>
     }
+
+    <ng-container *ngTemplateOutlet="sofa.familienmitgliederTabelle; context: { mitglieder: row.familienpreis?.weitereMitglieder }"></ng-container>
+    <ng-container *ngTemplateOutlet="sofa.preisTabelle; context: { row }"></ng-container>
+    <ng-container *ngTemplateOutlet="solaTeilnehmer.wuenscheDetails; context: { row, isModal }"></ng-container>
   </div>
+</ng-template>
 
-  @if($anmeldungen(); as anmeldungen) {
-    <ngx-datatable
-      #datatable
-      [rows]="anmeldungen"
-      [messages]="{ emptyMessage: 'Keine Daten', totalMessage: 'insgesamt' }"
-      [headerHeight]="50"
-      [rowHeight]="50"
-      [footerHeight]="50"
-      columnMode="force"
-      class="bootstrap"
-    >
-      <ngx-datatable-row-detail #myDetailRow [rowHeight]="100">
-        <ng-template let-row="row" ngx-datatable-row-detail-template>
-          <div class="d-flex justify-content-between align-items-center p-5">
-            @if (row.fields.length) {
-            <dl>
-              @for (field of row.fields; track field.name) {
-              <dt>{{ field.name }}</dt>
-              <dd>{{ field.value }}</dd>
-              }
-            </dl>
-            }
-            @if ($isFamiliensola()) {
-              <table>
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th>Anzahl</th>
-                    <th>Einzel</th>
-                    <th>Summe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colspan="2">Kinder bis 4 Jahre</td>
-                    <td colspan="2">frei</td>
-                  </tr>
-                  <tr>
-                    <td>Kinder 5 - 12</td>
-                    <td>{{ row.familienpreis.personenAnzahl5Bis12 }}</td>
-                    <td>80,- €</td>
-                    <td>
-                      {{ row.familienpreis.personenAnzahl5Bis12 * 80 | currency : 'EUR' }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Kinder und Erwachsene ab 13 Jahre</td>
-                    <td>{{ row.familienpreis.personenAnzahlAb13 }}</td>
-                    <td>120,- €</td>
-                    <td>
-                      {{ row.familienpreis.personenAnzahlAb13 * 120 | currency : 'EUR' }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Hunde</td>
-                    <td>{{ row.familienpreis.anzahlHunde }}</td>
-                    <td>20,- €</td>
-                    <td>
-                      {{ row.familienpreis.anzahlHunde * 20 | currency : 'EUR' }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td colspan="3">Platzgebühr je Familie</td>
-                    <td>{{ 80 | currency : 'EUR' }}</td>
-                  </tr>
-                  <tr>
-                    <th colspan="3">Gesamt</th>
-                    <th>{{ row.familienpreis.gesamt | currency : 'EUR' }}</th>
-                  </tr>
-                </tbody>
-              </table>
-            }
-          </div>
-        </ng-template>
-      </ngx-datatable-row-detail>
+<div class="container d-flex flex-column mt-5">
+  <app-sola-selector
+    [jahre]="$jahre()"
+    [solawochen]="$solawochen()"
+    (yearSelected)="onYearSelected($event)"
+    (weekSelected)="onWeekSelected($event)"
+  ></app-sola-selector>
 
-      <ngx-datatable-column
-        [width]="50"
-        [resizeable]="false"
-        [sortable]="false"
-        [draggable]="false"
-        [canAutoResize]="false"
+  @if ($displayData(); as anmeldungen) {
+    @if (anmeldungen.length > 0) {
+      <ngx-datatable
+        #datatable
+        [rows]="solaTeilnehmer.getFilteredRows(anmeldungen)"
+        [messages]="{ emptyMessage: 'Keine Daten', totalMessage: 'insgesamt' }"
+        [headerHeight]="50"
+        [rowHeight]="50"
+        [footerHeight]="50"
+        [sorts]="[
+          { dir: 'asc', prop: 'person.domainAttributes.lastName' },
+          { dir: 'asc', prop: 'person.domainAttributes.firstName' },
+        ]"
+        [limit]="10"
+        columnMode="force"
+        class="bootstrap"
       >
-        <ng-template let-row="row" let-expanded="expanded" ngx-datatable-cell-template>
-          @if (row.fields.length) {
-            <a
-              href="javascript:void(0)"
-              title="Expand/Collapse Row"
-              [class.datatable-icon-right]="!expanded"
-              [class.datatable-icon-down]="expanded"
-              (click)="datatable.rowDetail?.toggleExpandRow(row)"
-            >
-            </a>
-          }
-        </ng-template>
-      </ngx-datatable-column>
+        <ngx-datatable-row-detail #myDetailRow [rowHeight]="100">
+          <ng-template let-row="row" ngx-datatable-row-detail-template>
+            <ng-container *ngTemplateOutlet="memberDetailsTemplate; context: { row }"></ng-container>
+          </ng-template>
+        </ngx-datatable-row-detail>
 
-      <ngx-datatable-column
-        prop="person.domainAttributes.firstName"
-        name="Vorname"
-      ></ngx-datatable-column>
-
-      <ngx-datatable-column
-        prop="person.domainAttributes.lastName"
-        name="Nachname"
-      ></ngx-datatable-column>
-
-      <ngx-datatable-column prop="personFields.birthday" name="Geburtstag">
-        <ng-template ngx-datatable-cell-template let-value="value">
-          {{ value | date : 'dd.MM.yyyy' }}
-        </ng-template>
-      </ngx-datatable-column>
-
-      <ngx-datatable-column prop="personFields.sexId" name="m/w">
-        <ng-template ngx-datatable-cell-template let-value="value">
-          {{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}
-        </ng-template>
-      </ngx-datatable-column>
-
-      @if ($isFamiliensola()) {
-        <ngx-datatable-column prop="familienpreis.gesamt" name="Preis">
-          <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
-            <span [class.text-danger]="row.familienpreis.invalid">
-              {{ value | currency : 'EUR' }}
-            </span>
+        <ngx-datatable-column
+          [width]="50"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="false"
+        >
+          <ng-template let-row="row" let-expanded="expanded" ngx-datatable-cell-template>
+            @if (row.fields.length) {
+              <a
+                href="javascript:void(0)"
+                title="Expand/Collapse Row"
+                [class.datatable-icon-right]="!expanded"
+                [class.datatable-icon-down]="expanded"
+                (click)="datatable.rowDetail?.toggleExpandRow(row)"
+              >
+              </a>
+            }
           </ng-template>
         </ngx-datatable-column>
 
         <ngx-datatable-column
-          prop="familienpreis.anzahlFamilienmitglieder"
-          name="Personen"
+          prop="person.domainAttributes.lastName"
+          name="Nachname"
         ></ngx-datatable-column>
-      }
 
-      <ngx-datatable-column prop="groupMemberStatus" name="Status"></ngx-datatable-column>
-    </ngx-datatable>
+        <ngx-datatable-column
+          prop="person.domainAttributes.firstName"
+          name="Vorname"
+        ></ngx-datatable-column>
 
-    @if (anmeldungen.length > 0) {
-      <button type="button" (click)="updateFamilienpreis()" [disabled]="$progress() > 0" class="btn btn-primary align-self-end">
-        Familienpreis übertragen
-        @if ($progress() > 0) { ({{ $progress() | percent }}) }
-      </button>
+        <ngx-datatable-column prop="personFields.birthday" name="Geburtstag">
+          <ng-template ngx-datatable-cell-template let-value="value">
+            {{ value | date: 'dd.MM.yyyy' }}
+          </ng-template>
+        </ngx-datatable-column>
+
+        <ngx-datatable-column prop="personFields.sexId" name="m/w">
+          <ng-template ngx-datatable-cell-template let-value="value">
+            {{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}
+          </ng-template>
+        </ngx-datatable-column>
+
+        @if (sofa.preisSpalte) {
+          <ngx-datatable-column prop="familienpreis.gesamt" name="Preis">
+            <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
+              <ng-container
+                *ngTemplateOutlet="sofa.preisSpalte; context: { value, row }"
+              ></ng-container>
+            </ng-template>
+          </ngx-datatable-column>
+        }
+
+        @if (sofa.personenSpalte) {
+          <ngx-datatable-column prop="familienpreis.anzahlFamilienmitglieder" name="Personen">
+            <ng-template ngx-datatable-cell-template let-row="row">
+              <ng-container
+                *ngTemplateOutlet="sofa.personenSpalte; context: { row }"
+              ></ng-container>
+            </ng-template>
+          </ngx-datatable-column>
+        }
+
+        @if (solaTeilnehmer.wuenscheSpalte) {
+          <ngx-datatable-column 
+            name="Wünsche" 
+            prop="id" 
+            [sortable]="true" 
+            [comparator]="solaTeilnehmer.wuenscheComparator"
+          >
+            <ng-template ngx-datatable-header-template let-column="column" let-sortFn="sortFn" let-sortDir="sortDir">
+              <ng-container
+                *ngTemplateOutlet="solaTeilnehmer.wuenscheHeader || fallbackHeader; context: { column, sortFn, sortDir }"
+              ></ng-container>
+              <ng-template #fallbackHeader let-column="column" let-sortFn="sortFn">
+                <span (click)="sortFn()" style="cursor: pointer">{{ column.name }}</span>
+              </ng-template>
+            </ng-template>
+            <ng-template ngx-datatable-cell-template let-row="row">
+              <ng-container
+                *ngTemplateOutlet="solaTeilnehmer.wuenscheSpalte; context: { row }"
+              ></ng-container>
+            </ng-template>
+          </ngx-datatable-column>
+        }
+
+        <ngx-datatable-column prop="groupMemberStatus" name="Status">
+          <ng-template ngx-datatable-cell-template let-row="row" let-value="value">
+            <span
+              [class.fw-bold]="
+                sofa.$unsavedIds().includes(row.id) || solaTeilnehmer.$unsavedIds().includes(row.id)
+              "
+              >{{ value }}</span
+            >
+          </ng-template>
+        </ngx-datatable-column>
+      </ngx-datatable>
     }
   }
+
+  <app-sofa-anmeldungen
+    #sofa
+    [anmeldungen]="$anmeldungen()"
+    [priceRefDate]="$priceRefDate()"
+    [updateProgress]="$updateProgress()"
+    (processedData)="onSofaDataProcessed($event)"
+    (updateRequested)="performCentralUpdate($event)"
+  ></app-sofa-anmeldungen>
+
+  <app-sola-teilnehmer-anmeldungen
+    #solaTeilnehmer
+    [anmeldungen]="$displayData() || []"
+    [updateProgress]="$updateProgress()"
+    [isFamiliensola]="sofa.$isFamiliensola()"
+    [detailTemplate]="memberDetailsTemplate"
+    (updateRequested)="performCentralUpdate($event)"
+  ></app-sola-teilnehmer-anmeldungen>
 </div>

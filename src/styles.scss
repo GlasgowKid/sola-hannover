@@ -78,3 +78,61 @@
     transform: translateX(-50%) scale(0, 1);
   }
 }
+
+/* ngx-datatable Pager Kontrast-Korrektur */
+.ngx-datatable.bootstrap .datatable-footer .datatable-pager {
+  ul li {
+    button, a, .page-button {
+      color: var(--bs-dark, #212529) !important;
+      background: transparent !important;
+
+      i {
+        color: inherit !important;
+      }
+
+      &:hover {
+        background-color: var(--bs-dark, #212529) !important; 
+        color: var(--bs-white, #ffffff) !important;
+      }
+    }
+
+    &.active button,
+    &.active a,
+    &.active .page-button {
+      background-color: var(--bs-dark, #212529) !important;
+      color: var(--bs-white, #ffffff) !important;
+      font-weight: normal !important;
+    }
+
+    &.disabled button,
+    &.disabled a,
+    &.disabled .page-button,
+    button:disabled {
+      color: var(--bs-secondary, #6c757d) !important;
+      opacity: 0.5;
+      cursor: not-allowed;
+      background-color: transparent !important;
+      
+      &:hover {
+        background-color: transparent !important;
+        color: var(--bs-secondary, #6c757d) !important;
+      }
+    }
+  }
+}
+
+/* UX: Optische Unterscheidung von Links */
+.link-modal {
+  text-decoration: underline dashed !important;
+  text-underline-offset: 3px;
+  
+  &:hover {
+    text-decoration-style: solid !important;
+  }
+}
+
+.link-external::after {
+  content: ' \2197'; /* Unicode für ↗ */
+  font-size: 0.85em;
+  opacity: 0.7;
+}

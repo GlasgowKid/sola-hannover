@@ -1,0 +1,166 @@
+import { CurrencyPipe, DatePipe, PercentPipe } from '@angular/common';
+import { Component, OnChanges, TemplateRef, ViewChild, computed, input, output, signal } from '@angular/core';
+import { addYears, interval, isAfter, isValid, isWithinInterval, parseISO } from 'date-fns';
+import { MemberStatus } from '../../../utils/ct-enums';
+import { GroupMember } from '../../../utils/ct-types';
+import { MemberUpdatePayload } from '../anmeldungen/anmeldungen.component';
+
+const PRICES = { CHILD: 80, ADULT: 120, DOG: 20, BASE: 80 };
+
+export interface WeiteresFamilienmitglied {
+  vorname: string;
+  nachname: string;
+  geburtstag: Date | null;
+}
+
+export interface Familienpreis {
+  personenAnzahl5Bis12: number;
+  personenAnzahlAb13: number;
+  anzahlHunde: number;
+  invalid: boolean;
+  anzahlFamilienmitglieder: number;
+  gesamt: number;
+  weitereMitglieder: WeiteresFamilienmitglied[];
+}
+
+export type SofaAnmeldungViewModel = GroupMember & {
+  familienpreis: Familienpreis;
+  displayFields: Array<{ id: number; name: string; value: unknown; sortKey: number; }>;
+};
+
+@Component({
+  selector: 'app-sofa-anmeldungen',
+  standalone: true,
+  imports: [CurrencyPipe, DatePipe, PercentPipe],
+  templateUrl: './sofa-anmeldungen.component.html',
+  styleUrl: './sofa-anmeldungen.component.scss',
+})
+export class SofaAnmeldungenComponent implements OnChanges {
+  @ViewChild('preisTabelle') preisTabelle?: TemplateRef<{ row: SofaAnmeldungViewModel }>;
+  @ViewChild('preisSpalte') preisSpalte?: TemplateRef<{ value: number, row: SofaAnmeldungViewModel }>;
+  @ViewChild('personenSpalte') personenSpalte?: TemplateRef<{ row: SofaAnmeldungViewModel }>;
+  @ViewChild('familienmitgliederTabelle') familienmitgliederTabelle?: TemplateRef<{ mitglieder: WeiteresFamilienmitglied[] }>;
+
+  readonly anmeldungen = input.required<GroupMember[]>();
+  readonly priceRefDate = input.required<Date>();
+  readonly updateProgress = input<number>(0);
+  readonly updateRequested = output<MemberUpdatePayload[]>();
+  readonly processedData = output<SofaAnmeldungViewModel[]>();
+  readonly $isFamiliensola = signal(false);
+  readonly $internalData = signal<SofaAnmeldungViewModel[]>([]);
+
+  readonly $unsavedPayloads = computed<MemberUpdatePayload[]>(() => {
+    return this.$internalData()
+      .filter(m => m.groupMemberStatus === MemberStatus.REQUESTED)
+      .filter(m => {
+        // Nur Payload erzeugen, wenn der Familienpreis sich wirklich unterscheidet
+        const existingField = m.fields.find(f => f.name.toLowerCase() === 'familienpreis');
+        const normalizedExisting = existingField?.value == null ? '' : String(existingField.value);
+        const normalizedNew = String(m.familienpreis.gesamt);
+        return normalizedExisting !== normalizedNew;
+      })
+      .map(member => ({
+        member,
+        updates: [{ fieldName: 'familienpreis', value: member.familienpreis.gesamt }]
+      }));
+  });
+
+  readonly $unsavedIds = computed<number[]>(() => this.$unsavedPayloads().map(p => p.member.id));
+
+  ngOnChanges() {
+    const raw = this.anmeldungen();
+    if (!raw || raw.length === 0) {
+      this.$isFamiliensola.set(false);
+      this.$internalData.set([]);
+      this.processedData.emit([]);
+      return;
+    }
+
+    const processed: SofaAnmeldungViewModel[] = raw.map(m => ({
+      ...m,
+      familienpreis: this.calculateFamilienpreis(m),
+      displayFields: m.fields.filter(f => !f.name.includes('Familienmitglied')),
+    }));
+
+    const isFamiliensola = processed.some(a => a.familienpreis.anzahlFamilienmitglieder > 1);
+    this.$isFamiliensola.set(isFamiliensola);
+
+    this.$internalData.set(processed);
+    this.processedData.emit(processed);
+  }
+
+  private calculateFamilienpreis(anmeldung: GroupMember): Familienpreis {
+    const birthdates: Date[] = [];
+    let invalid = false;
+    const weitereMitglieder: WeiteresFamilienmitglied[] = []; // <-- Array initialisieren
+
+    const parseDate = (val: unknown): Date | null => {
+      const d = parseISO(String(val));
+      if (isValid(d)) return d;
+      else invalid = true;
+      return null;
+    };
+
+    if (anmeldung.personFields?.birthday) {
+      const d = parseDate(anmeldung.personFields.birthday);
+      if (d) birthdates.push(d);
+    }
+    else invalid = true;
+
+    let anzahlFamilienmitglieder = 1;
+    for (let i = 2; i <= 8; i++) {
+      const familienmitglied = anmeldung.fields.filter(({ name, value }) => name.endsWith(`Familienmitglied ${i}`) && !!value);
+      if (familienmitglied.length) {
+        anzahlFamilienmitglieder++;
+
+        const geburtstagFeld = familienmitglied.find(f => f.name.startsWith("Geburtstag"));
+        const vornameFeld = familienmitglied.find(f => f.name.startsWith("Vorname"));
+        const nachnameFeld = familienmitglied.find(f => f.name.startsWith("Nachname"));
+
+        const geburtstag = geburtstagFeld?.value ? parseDate(geburtstagFeld?.value) : null;
+        if (geburtstag) birthdates.push(geburtstag);
+        else invalid = true;
+
+        weitereMitglieder.push({
+          vorname: vornameFeld?.value ? String(vornameFeld.value) : '',
+          nachname: nachnameFeld?.value ? String(nachnameFeld.value) : '',
+          geburtstag,
+        });
+      }
+    }
+
+    let personenAnzahl5Bis12 = 0;
+    let personenAnzahlAb13 = 0;
+    const refDate = this.priceRefDate();
+    const limitFull = addYears(refDate, -13);
+    const limitFree = addYears(refDate, -5);
+    const rangeReduced = interval(limitFree, limitFull);
+
+    birthdates.forEach(birthday => {
+      if (isAfter(limitFull, birthday)) personenAnzahlAb13++;
+      else if (isWithinInterval(birthday, rangeReduced)) personenAnzahl5Bis12++;
+    });
+
+    const anzahlHunde = Number(anmeldung.fields.find(({ name }) => name === "Hunde")?.value || 0);
+    if (isNaN(anzahlHunde)) invalid = true;
+
+    const gesamt = (personenAnzahl5Bis12 * PRICES.CHILD) + (personenAnzahlAb13 * PRICES.ADULT) + (anzahlHunde * PRICES.DOG) + PRICES.BASE;
+
+    return {
+      personenAnzahl5Bis12,
+      personenAnzahlAb13,
+      anzahlHunde,
+      gesamt,
+      anzahlFamilienmitglieder,
+      invalid,
+      weitereMitglieder,
+    };
+  }
+
+  emitUpdate() {
+    const payloads = this.$unsavedPayloads();
+    if (payloads.length > 0) {
+      this.updateRequested.emit(payloads);
+    }
+  }
+}

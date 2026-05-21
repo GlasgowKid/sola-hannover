@@ -70,11 +70,11 @@ export class ChurchtoolsService {
   }
 
   getAnmeldungen(groupId: number): Observable<GroupMember[]> {
-    const params = { personFields: ["birthday", "sexId", "zip", "street"], limit: 200 };
+    const params = { personFields: ["birthday", "sexId", "street", "zip", "city"] };
     return this.loggedIn$.pipe(
       switchMap(
         (loggedIn) => loggedIn
-          ? from(churchtoolsClient.get<GroupMember[]>(`/groups/${groupId}/members`, params))
+          ? from(churchtoolsClient.getAllPages<GroupMember>(`/groups/${groupId}/members`, params))
           : of([])
       )
     );
@@ -91,7 +91,7 @@ export class ChurchtoolsService {
     );
   }
 
-  updateGroupMember(groupId: number, personId: number, value: Partial<GroupMember>): Observable<GroupMember> {
+  updateGroupMember(groupId: number, personId: number, value: Partial<Omit<GroupMember, 'fields'>> & { fields?: Record<string, any> }): Observable<GroupMember> {
     return this.loggedIn$.pipe(
       switchMap(
         (loggedIn) => loggedIn
