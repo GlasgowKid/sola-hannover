@@ -7,7 +7,7 @@ This project provides a boilerplate for building your own extension for [ChurchT
 ### Prerequisites
 
 -   Node.js (version compatible with the project)
--   npm or yarn
+-   npm
 -   Angular v21
 
 ### Installation
@@ -69,45 +69,9 @@ To create a production build:
 npm run deploy
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
-
-### Deployment
-
-To build and package your extension for deployment:
-
-```bash
-ng build
-```
-
 This command will:
 
 1. Build the project
 2. Package it using the `scripts/package.js` script
 
 You can find the package in the `releases` directory.
-
-## API
-
-Following endpoints are available. Permissions are possible per route. Types are documented in `ct-types.d.ts` (CustomModuleCreate, CustomModuleDataCategoryCreate, CustomModuleDataValueCreate)
-
-GET `/custommodules` get all extensions  
-GET `/custommodules/{extensionkey}` get an extensions by its key  
-GET `/custommodules/{moduleId}` get an extension by its ID
-
-GET `/custommodules/{moduleId}/customdatacategories`  
-POST `/custommodules/{moduleId}/customdatacategories`  
-PUT `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}`  
-DELETE `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}`
-
-GET `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues`  
-POST `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues`  
-PUT `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues/{valueId}`  
-DELETE `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues/{valueId}`
-
-## Support
-
-For questions about the ChurchTools API, visit the [Forum](https://forum.church.tools).
