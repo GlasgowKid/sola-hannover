@@ -61,6 +61,10 @@
         <label class="form-check-label text-danger" for="wFilterOffen">ja (offen)</label>
       </div>
       <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="wFilterIgnoriert" [checked]="pendingFilterState().ignoriert" (change)="toggleFilter('ignoriert', $any($event.target).checked)">
+        <label class="form-check-label text-warning" for="wFilterIgnoriert">ja (ignoriert)</label>
+      </div>
+      <div class="form-check mb-2">
         <input class="form-check-input" type="checkbox" id="wFilterManuell" [checked]="pendingFilterState().manuell" (change)="toggleFilter('manuell', $any($event.target).checked)">
         <label class="form-check-label text-success" for="wFilterManuell">ja (manuell)</label>
       </div>
@@ -89,6 +93,8 @@
         nein
       } @else if (!status.allFound) {
         <span class="text-danger">ja (offen)</span>
+      } @else if (status.hasIgnored) {
+        <span class="text-warning">ja (ignoriert)</span>
       } @else if (status.hasManual) {
         <span class="text-success">ja (manuell)</span>
       } @else if (!status.allSaved) {
@@ -99,34 +105,54 @@
     }
   </ng-template>
 
-  <ng-template #wuenscheDetails let-row="row">
+  <ng-template #wuenscheDetails let-row="row" let-isModal="isModal">
     @if ($wuenscheMap().get(row.id); as status) {
       @if (status.hasWunsch) {
         <dl class="mt-3 mb-0">
           @for (wunsch of status.wuensche; track wunsch; let idx = $index) {
             <dt>Wunsch {{ idx + 1 }}:</dt>
             <dd>
-              @if ((wunsch.members.length === 1 && wunsch.isExact) || wunsch.isManuallyConfirmed) {
-                <a [href]="wunsch.members[0].person.frontendUrl">
+              @if (isAlreadyUrl(wunsch.rawValue)) {
+                <a [href]="wunsch.members[0].person.frontendUrl" target="_blank" class="link-external" title="In ChurchTools öffnen">
                   {{ wunsch.members[0].person.domainAttributes.firstName }}
                   {{ wunsch.members[0].person.domainAttributes.lastName }}
                 </a>
               } @else {
-                <a
-                  href="javascript:void(0)"
-                  (click)="openResolveModal(resolveModal, row.id, wunsch.fieldName, wunsch.members)"
-                  class="text-danger"
-                >
-                  {{ wunsch.text }} ({{ wunsch.members.length }} Treffer)
-                </a>
+                @if (isModal) {
+                  <span 
+                    [class.fw-bold]="wunsch.isIgnored || isConfirmed(wunsch)"
+                    [class.text-warning]="wunsch.isIgnored"
+                    [class.text-danger]="!wunsch.isIgnored && !isConfirmed(wunsch)"
+                  >
+                    <ng-container *ngTemplateOutlet="wunschTextTemplate; context: { wunsch }"></ng-container>
+                  </span>
+                } @else {
+                  <a
+                    class="link-modal"
+                    [class.text-warning]="wunsch.isIgnored"
+                    [class.text-danger]="!wunsch.isIgnored && !isConfirmed(wunsch)"
+                    title="Manuelle Zuordnung bearbeiten"
+                    href="javascript:void(0)"
+                    (click)="openResolveModal(resolveModal, row.id, wunsch.fieldName, wunsch.members)"
+                  >
+                    <ng-container *ngTemplateOutlet="wunschTextTemplate; context: { wunsch }"></ng-container>
+                  </a>
+                }
 
-                @if (wunsch.members.length === 1 && !wunsch.isExact) {
+                @if (!wunsch.isIgnored && !isConfirmed(wunsch) && wunsch.members.length === 1) {
                   <span class="text-muted ms-2">
                     Meintest du:
-                    <a href="javascript:void(0)" (click)="confirmMatch(row.id, wunsch.fieldName)">
-                      {{ wunsch.members[0].person.domainAttributes.firstName }}
-                      {{ wunsch.members[0].person.domainAttributes.lastName }} </a
-                    >?
+                    @if (isModal) {
+                      <span class="fw-bold">
+                        {{ wunsch.members[0].person.domainAttributes.firstName }}
+                        {{ wunsch.members[0].person.domainAttributes.lastName }}
+                      </span>?
+                    } @else {
+                      <a href="javascript:void(0)" class="link-modal" title="Diesen Treffer sofort zuordnen" (click)="confirmMatch(row.id, wunsch.fieldName)">
+                        {{ wunsch.members[0].person.domainAttributes.firstName }}
+                        {{ wunsch.members[0].person.domainAttributes.lastName }}
+                      </a>?
+                    }
                   </span>
                 }
               }
@@ -136,6 +162,18 @@
       }
     }
   </ng-template>
+
+  <ng-template #wunschTextTemplate let-wunsch="wunsch">
+    @if (wunsch.isIgnored) {
+      {{ wunsch.text }} (ignoriert)
+    } @else if (isConfirmed(wunsch)) {
+      {{ getConfirmedMember(wunsch)?.person?.domainAttributes?.firstName }}
+      {{ getConfirmedMember(wunsch)?.person?.domainAttributes?.lastName }}
+    } @else {
+      {{ wunsch.text }} ({{ wunsch.members.length }} Treffer)
+    }
+  </ng-template>
+
   <ng-template #resolveModal>
     <div class="modal-header">
       <h4 class="modal-title pull-left">Manuelle Wunschzuordnung</h4>
@@ -150,73 +188,104 @@
     </div>
 
     <div class="modal-body">
-      <p>
-        Bitte wähle die korrekte Person für <strong>{{ resolveState()?.fieldName }}</strong> aus:
-      </p>
-
-      @if (!resolveState()?.candidates?.length) {
-        <input 
-          type="text" 
-          class="form-control mb-3" 
-          placeholder="Teilnehmer suchen..." 
-          [value]="searchQuery()" 
-          (input)="searchQuery.set($any($event.target).value)"
-        >
-      } @else {
-        <div class="mb-3">
-          <button type="button" class="btn btn-outline-primary" (click)="enableManualSearch()">
-            Alle Teilnehmer durchsuchen
-          </button>
+      @if (resolveState()?.confirmedMember; as confirmedMember) {
+        <div class="card mb-4">
+          <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+            <strong class="m-0">Aktuell zugeordnet: {{ confirmedMember.person.domainAttributes.firstName }} {{ confirmedMember.person.domainAttributes.lastName }}</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" (click)="resetMatch(resolveState()!.rowId, resolveState()!.fieldName)">
+              Zurücksetzen
+            </button>
+          </div>
+          <div class="card-body p-0">
+            @if (detailTemplate()) {
+              <ng-container *ngTemplateOutlet="detailTemplate()!; context: { row: confirmedMember, isModal: true }"></ng-container>
+            }
+          </div>
         </div>
+      } @else if (resolveState()?.isIgnored) {
+        <div class="card mb-4 border-warning">
+          <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center py-2">
+            <strong class="m-0">Dieser Wunsch wurde ignoriert (nicht gefunden).</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" (click)="resetMatch(resolveState()!.rowId, resolveState()!.fieldName)">
+              Zurücksetzen
+            </button>
+          </div>
+        </div>
+      } @else {
+        <h5 class="mb-3">Zuordnung ändern</h5>
+        <p>
+          Bitte wähle die korrekte Person für <strong>{{ resolveState()?.fieldName }}</strong> aus:
+        </p>
+
+        @if (!resolveState()?.candidates?.length) {
+          <input 
+            type="text" 
+            class="form-control mb-3" 
+            placeholder="Teilnehmer suchen..." 
+            [value]="searchQuery()" 
+            (input)="searchQuery.set($any($event.target).value)"
+          >
+        } @else {
+          <div class="mb-3">
+            <button type="button" class="btn btn-outline-primary" (click)="enableManualSearch()">
+              Alle Teilnehmer durchsuchen
+            </button>
+          </div>
+        }
+
+          <ngx-datatable
+            class="bootstrap"
+            [rows]="filteredCandidates()"
+            [messages]="{ emptyMessage: 'Keine Daten', totalMessage: 'insgesamt', selectedMessage: '' }"
+            [headerHeight]="40"
+            [rowHeight]="50"
+            [footerHeight]="50"
+            [limit]="5"
+            [selected]="resolveState()?.selected || []"
+            selectionType="single"
+            (selectedChange)="onCandidateSelect({ selected: $event })"
+            columnMode="force"
+          >
+            <ngx-datatable-column
+              prop="person.domainAttributes.firstName"
+              name="Vorname"
+            ></ngx-datatable-column>
+            <ngx-datatable-column
+              prop="person.domainAttributes.lastName"
+              name="Nachname"
+            ></ngx-datatable-column>
+
+            <ngx-datatable-column prop="personFields.sexId" name="m/w" [width]="50">
+              <ng-template ngx-datatable-cell-template let-value="value">
+                {{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}
+              </ng-template>
+            </ngx-datatable-column>
+
+            <ngx-datatable-column
+              prop="personFields.zip"
+              name="PLZ"
+              [width]="80"
+            ></ngx-datatable-column>
+            <ngx-datatable-column prop="personFields.city" name="Ort"></ngx-datatable-column>
+          </ngx-datatable>
       }
-
-        <ngx-datatable
-          class="bootstrap"
-          [rows]="filteredCandidates()"
-          [messages]="{ emptyMessage: 'Keine Daten', totalMessage: 'insgesamt', selectedMessage: '' }"
-          [headerHeight]="40"
-          [rowHeight]="50"
-          [footerHeight]="50"
-          [limit]="5"
-          [selected]="resolveState()?.selected || []"
-          selectionType="single"
-          (selectedChange)="onCandidateSelect({ selected: $event })"
-          columnMode="force"
-        >
-          <ngx-datatable-column
-            prop="person.domainAttributes.firstName"
-            name="Vorname"
-          ></ngx-datatable-column>
-          <ngx-datatable-column
-            prop="person.domainAttributes.lastName"
-            name="Nachname"
-          ></ngx-datatable-column>
-
-          <ngx-datatable-column prop="personFields.sexId" name="m/w" [width]="50">
-            <ng-template ngx-datatable-cell-template let-value="value">
-              {{ value === 1 ? 'm' : '' }}{{ value === 2 ? 'w' : '' }}
-            </ng-template>
-          </ngx-datatable-column>
-
-          <ngx-datatable-column
-            prop="personFields.zip"
-            name="PLZ"
-            [width]="80"
-          ></ngx-datatable-column>
-          <ngx-datatable-column prop="personFields.city" name="Ort"></ngx-datatable-column>
-        </ngx-datatable>
     </div>
 
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" (click)="modalRef?.hide()">Abbrechen</button>
-      <button
-        type="button"
-        class="btn btn-primary"
-        [disabled]="!resolveState()?.selected?.length"
-        (click)="confirmModalSelection()"
-      >
-        Übernehmen
-      </button>
+      @if (resolveState()?.confirmedMember || resolveState()?.isIgnored) {
+        <button type="button" class="btn btn-secondary" (click)="modalRef?.hide()">Schließen</button>
+      } @else {
+        <button type="button" class="btn btn-secondary" (click)="modalRef?.hide()">Abbrechen</button>
+        <button type="button" class="btn btn-outline-warning me-auto" (click)="acceptMatch(resolveState()!.rowId, resolveState()!.fieldName)">Wunsch ignorieren</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!resolveState()?.selected?.length"
+          (click)="confirmModalSelection()"
+        >
+          Übernehmen
+        </button>
+      }
     </div>
   </ng-template>
 }

@@ -107,11 +107,49 @@ describe('SolaTeilnehmerAnmeldungenComponent', () => {
       const status = spectator.component.$wuenscheMap().get(1);
       expect(status?.allSaved).toBe(true);
     });
+
+    it('should parse and handle ignored matches', () => {
+      const m1 = createMockMember(1, 'Anton', 'Müller', 'Hans (ignoriert)');
+      spectator.setInput('anmeldungen', [m1]);
+      spectator.component.ngOnChanges();
+
+      const status = spectator.component.$wuenscheMap().get(1);
+      expect(status?.hasIgnored).toBe(true);
+      expect(status?.allFound).toBe(true);
+      expect(status?.allSaved).toBe(true);
+      expect(status?.wuensche[0].text).toBe('Hans');
+    });
+
+    it('should allow accepting an open match', () => {
+      const m1 = createMockMember(1, 'Anton', 'Müller', 'Hans');
+      spectator.setInput('anmeldungen', [m1]);
+      spectator.component.ngOnChanges();
+
+      spectator.component.acceptMatch(1, 'Wunsch 1');
+      
+      const status = spectator.component.$wuenscheMap().get(1);
+      expect(status?.hasIgnored).toBe(true);
+      expect(status?.allSaved).toBe(false); // Because the rawValue does not yet have the postfix
+      
+      const payloads = spectator.component.$unsavedPayloads();
+      expect(payloads.length).toBe(1);
+      expect(payloads[0].updates[0].value).toBe('Hans (ignoriert)');
+    });
+
+    it('should correctly identify confirmed matches using isConfirmed helper', () => {
+      const exactMatch = { members: [createMockMember(2, 'A', 'B')], isExact: true } as any;
+      const manualMatch = { members: [createMockMember(2, 'A', 'B')], isExact: false, isManuallyConfirmed: true } as any;
+      const openMatch = { members: [createMockMember(2, 'A', 'B')], isExact: false, isManuallyConfirmed: false } as any;
+
+      expect(spectator.component.isConfirmed(exactMatch)).toBe(true);
+      expect(spectator.component.isConfirmed(manualMatch)).toBe(true);
+      expect(spectator.component.isConfirmed(openMatch)).toBe(false);
+    });
   });
 
   describe('Modal and Manual Zuweisung', () => {
     it('should handle manual search clearing candidates', () => {
-      spectator.component.resolveState.set({ rowId: 1, fieldName: 'Wunsch 1', candidates: [createMockMember(2, 'a', 'b')], selected: [] });
+      spectator.component.resolveState.set({ rowId: 1, fieldName: 'Wunsch 1', candidates: [createMockMember(2, 'a', 'b')], selected: [], confirmedMember: null, isIgnored: false });
       spectator.component.enableManualSearch();
       
       expect(spectator.component.resolveState()?.candidates.length).toBe(0);
@@ -135,6 +173,30 @@ describe('SolaTeilnehmerAnmeldungenComponent', () => {
       expect(status?.wuensche[0].isManuallyConfirmed).toBe(true);
       expect(status?.hasManual).toBe(true);
       expect(status?.allFound).toBe(true);
+    });
+
+    it('should reset a locally ignored match back to open server state and keep the modal state open', () => {
+      // Start mit einem offenen Server-Zustand
+      const m1 = createMockMember(1, 'Anton', 'Müller', 'Hans');
+      spectator.setInput('anmeldungen', [m1]);
+      spectator.component.ngOnChanges();
+
+      // Wunsch manuell ignorieren
+      spectator.component.acceptMatch(1, 'Wunsch 1');
+      expect(spectator.component.$wuenscheMap().get(1)?.hasIgnored).toBe(true);
+
+      // Modal für den ignorierten Wunsch öffnen, bevor wir zurücksetzen
+      spectator.component.openResolveModal({} as any, 1, 'Wunsch 1', []);
+      expect(spectator.component.resolveState()?.isIgnored).toBe(true);
+
+      // Reset aufrufen
+      spectator.component.resetMatch(1, 'Wunsch 1');
+
+      // Das Modal-Signal sollte auf den Ursprungszustand zurückgesetzt werden
+      const state = spectator.component.resolveState();
+      expect(state?.isIgnored).toBe(false);
+      expect(state?.confirmedMember).toBeNull();
+      expect(spectator.component.$wuenscheMap().get(1)?.hasIgnored).toBe(false);
     });
   });
 

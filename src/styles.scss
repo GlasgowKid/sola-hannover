@@ -120,3 +120,19 @@
     }
   }
 }
+
+/* UX: Optische Unterscheidung von Links */
+.link-modal {
+  text-decoration: underline dashed !important;
+  text-underline-offset: 3px;
+  
+  &:hover {
+    text-decoration-style: solid !important;
+  }
+}
+
+.link-external::after {
+  content: ' \2197'; /* Unicode für ↗ */
+  font-size: 0.85em;
+  opacity: 0.7;
+}

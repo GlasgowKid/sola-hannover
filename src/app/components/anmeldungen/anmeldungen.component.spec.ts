@@ -3,6 +3,7 @@ import { of } from 'rxjs';
 import { startOfYear } from 'date-fns';
 import { AnmeldungenComponent } from './anmeldungen.component';
 import { ChurchtoolsService } from '../../services/churchtools.service';
+import { SolaTeilnehmerAnmeldungenComponent } from '../sola-teilnehmer-anmeldungen/sola-teilnehmer-anmeldungen.component';
 
 describe('AnmeldungenComponent', () => {
   let spectator: Spectator<AnmeldungenComponent>;
@@ -71,6 +72,12 @@ describe('AnmeldungenComponent', () => {
     spectator.component.onSofaDataProcessed(mockData as any);
     
     expect(spectator.component.$displayData()).toEqual(mockData);
+  });
+
+  it('should pass the detailTemplate to SolaTeilnehmerAnmeldungenComponent', () => {
+    const solaTeilnehmer = spectator.query(SolaTeilnehmerAnmeldungenComponent);
+    expect(solaTeilnehmer).toBeTruthy();
+    expect(solaTeilnehmer?.detailTemplate).toBeDefined();
   });
 
   describe('performCentralUpdate', () => {

@@ -1,4 +1,4 @@
-import { PercentPipe } from '@angular/common';
+import { NgTemplateOutlet, PercentPipe } from '@angular/common';
 import { Component, OnChanges, TemplateRef, ViewChild, computed, inject, input, output, signal } from '@angular/core';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
 import { BsModalRef, BsModalService, ModalModule } from 'ngx-bootstrap/modal';
@@ -12,6 +12,7 @@ export interface WunschMatch {
   members: GroupMember[];
   isExact: boolean;
   isManuallyConfirmed?: boolean;
+  isIgnored?: boolean;
   selectedIndex?: number;
 }
 
@@ -20,13 +21,14 @@ export interface WunschStatus {
   allFound: boolean;
   allSaved: boolean;
   hasManual?: boolean;
+  hasIgnored?: boolean;
   wuensche: WunschMatch[];
 }
 
 @Component({
   selector: 'app-sola-teilnehmer-anmeldungen',
   standalone: true,
-  imports: [ModalModule, NgxDatatableModule, PercentPipe],
+  imports: [ModalModule, NgTemplateOutlet, NgxDatatableModule, PercentPipe],
   providers: [BsModalService],
   templateUrl: './sola-teilnehmer-anmeldungen.component.html',
   styleUrl: './sola-teilnehmer-anmeldungen.component.scss',
@@ -34,11 +36,12 @@ export interface WunschStatus {
 export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
   @ViewChild('wuenscheHeader') wuenscheHeader?: TemplateRef<any>;
   @ViewChild('wuenscheSpalte') wuenscheSpalte?: TemplateRef<{ row: GroupMember }>;
-  @ViewChild('wuenscheDetails') wuenscheDetails?: TemplateRef<{ row: GroupMember }>;
+  @ViewChild('wuenscheDetails') wuenscheDetails?: TemplateRef<{ row: GroupMember, isModal?: boolean }>;
 
   readonly anmeldungen = input.required<GroupMember[]>();
   readonly isFamiliensola = input.required<boolean>();
   readonly updateProgress = input<number>(0);
+  readonly detailTemplate = input<TemplateRef<any>>();
   readonly updateRequested = output<MemberUpdatePayload[]>();
   readonly $showWuensche = signal(false);
   readonly $wuenscheMap = signal<Map<number, WunschStatus>>(new Map());
@@ -53,12 +56,17 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       const updates: { fieldName: string, value: string }[] = [];
 
       for (const wunsch of status.wuensche) {
-        const isConfirmed = (wunsch.members.length === 1 && wunsch.isExact) || wunsch.isManuallyConfirmed;
-        if (isConfirmed && !this.isAlreadyUrl(wunsch.rawValue)) {
-          const targetMember = this.getConfirmedMember(wunsch);
-          const value = targetMember?.person?.frontendUrl;
-          if (value) {
-            updates.push({ fieldName: wunsch.fieldName, value });
+        if (wunsch.isIgnored) {
+          if (!wunsch.rawValue.toLowerCase().endsWith('(ignoriert)')) {
+            updates.push({ fieldName: wunsch.fieldName, value: `${wunsch.rawValue} (ignoriert)` });
+          }
+        } else {
+          if (this.isConfirmed(wunsch) && !this.isAlreadyUrl(wunsch.rawValue)) {
+            const targetMember = this.getConfirmedMember(wunsch);
+            const value = targetMember?.person?.frontendUrl;
+            if (value) {
+              updates.push({ fieldName: wunsch.fieldName, value });
+            }
           }
         }
       }
@@ -112,6 +120,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
   readonly filterState = signal({
     nein: true,
     offen: true,
+    ignoriert: true,
     manuell: true,
     gefunden: true,
     zugeordnet: true
@@ -129,7 +138,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
 
   readonly hasActiveFilter = computed(() => {
     const f = this.filterState();
-    return !f.nein || !f.offen || !f.manuell || !f.gefunden || !f.zugeordnet;
+    return !f.nein || !f.offen || !f.ignoriert || !f.manuell || !f.gefunden || !f.zugeordnet;
   });
 
   getFilteredRows(rows: GroupMember[]): GroupMember[] {
@@ -145,7 +154,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     this.lastInputRows = rows;
     this.lastFilterStateStr = filterStateStr;
 
-    if (f.nein && f.offen && f.manuell && f.gefunden && f.zugeordnet) {
+    if (f.nein && f.offen && f.ignoriert && f.manuell && f.gefunden && f.zugeordnet) {
       this.lastFilteredRows = rows;
       return this.lastFilteredRows;
     }
@@ -154,6 +163,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       const status = this.$wuenscheMap().get(row.id);
       if (!status || !status.hasWunsch) return f.nein;
       if (!status.allFound) return f.offen;
+      if (status.hasIgnored) return f.ignoriert;
       if (status.hasManual) return f.manuell;
       if (!status.allSaved) return f.gefunden;
       return f.zugeordnet;
@@ -177,7 +187,7 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
   }
 
   resetWuenscheFilterAndSort() {
-    this.pendingFilterState.set({ nein: true, offen: true, manuell: true, gefunden: true, zugeordnet: true });
+    this.pendingFilterState.set({ nein: true, offen: true, ignoriert: true, manuell: true, gefunden: true, zugeordnet: true });
     this.pendingSortState.set('none');
   }
 
@@ -203,11 +213,12 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
   readonly wuenscheComparator = (propA: any, propB: any, rowA: GroupMember, rowB: GroupMember) => {
     const getSortValue = (row: GroupMember) => {
       const status = this.$wuenscheMap().get(row.id);
-      if (!status || !status.hasWunsch) return 5;
+      if (!status || !status.hasWunsch) return 6;
       if (!status.allFound) return 1;
-      if (status.hasManual) return 2;
-      if (!status.allSaved) return 3;
-      return 4;
+      if (status.hasIgnored) return 2;
+      if (status.hasManual) return 3;
+      if (!status.allSaved) return 4;
+      return 5;
     };
 
     const valA = getSortValue(rowA);
@@ -230,6 +241,8 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     fieldName: string;
     candidates: GroupMember[];
     selected: GroupMember[];
+    confirmedMember: GroupMember | null;
+    isIgnored: boolean;
   } | null>(null);
 
   ngOnChanges() {
@@ -250,6 +263,32 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     }
   }
 
+  private updateStatusFlags(status: WunschStatus) {
+    let allFound = true;
+    let hasManual = false;
+    let hasIgnored = false;
+    let allSaved = true;
+
+    for (const w of status.wuensche) {
+      if (w.isIgnored) {
+        hasIgnored = true;
+        if (!w.rawValue.toLowerCase().endsWith('(ignoriert)')) {
+          allSaved = false;
+        }
+      } else if (this.isConfirmed(w)) {
+        if (w.isManuallyConfirmed) hasManual = true;
+        if (!this.isAlreadyUrl(w.rawValue)) allSaved = false;
+      } else {
+        allFound = false;
+        allSaved = false;
+      }
+    }
+    status.allFound = allFound;
+    status.hasManual = hasManual;
+    status.hasIgnored = hasIgnored;
+    status.allSaved = allFound && allSaved;
+  }
+
   private calculateWunschMatches(allMembers: GroupMember[]) {
     const resultMap = new Map<number, WunschStatus>();
 
@@ -264,21 +303,10 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
         wuensche: [],
       };
 
-      let w1Success = true;
-      let w2Success = true;
+      if (w1Match) status.wuensche.push(w1Match);
+      if (w2Match) status.wuensche.push(w2Match);
 
-      if (w1Match) {
-        status.wuensche.push(w1Match);
-        w1Success = w1Match.members.length === 1 && w1Match.isExact;
-      }
-
-      if (w2Match) {
-        status.wuensche.push(w2Match);
-        w2Success = w2Match.members.length === 1 && w2Match.isExact;
-      }
-
-      status.allFound = status.hasWunsch && w1Success && w2Success;
-      status.allSaved = status.allFound && status.wuensche.every(w => this.isAlreadyUrl(w.rawValue));
+      this.updateStatusFlags(status);
       resultMap.set(row.id, status);
     }
 
@@ -290,8 +318,15 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     const rawValue = field?.value ? String(field.value).trim() : '';
     if (!rawValue) return null;
 
-    if (this.isAlreadyUrl(rawValue)) {
-      const matchedMember = allMembers.find(m => m.person?.frontendUrl === rawValue);
+    let isIgnored = false;
+    let searchText = rawValue;
+    if (rawValue.toLowerCase().endsWith('(ignoriert)')) {
+      isIgnored = true;
+      searchText = rawValue.substring(0, rawValue.lastIndexOf('(ignoriert)')).trim();
+    }
+
+    if (this.isAlreadyUrl(searchText)) {
+      const matchedMember = allMembers.find(m => m.person?.frontendUrl === searchText);
       if (matchedMember) {
         const first = matchedMember.person?.domainAttributes?.firstName || '';
         const last = matchedMember.person?.domainAttributes?.lastName || '';
@@ -301,17 +336,19 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
           rawValue,
           members: [matchedMember],
           isExact: true,
+          isIgnored
         };
       }
     }
 
-    const matchResult = this.findMatches(rawValue, row.personId, allMembers);
+    const matchResult = this.findMatches(searchText, row.personId, allMembers);
     return {
       fieldName,
-      text: rawValue,
+      text: searchText,
       rawValue,
       members: matchResult.members,
-      isExact: matchResult.isExact
+      isExact: matchResult.isExact,
+      isIgnored
     };
   }
 
@@ -390,8 +427,12 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       .filter(token => token.length > 0);
   }
 
-  private isAlreadyUrl(val: string): boolean {
+  isAlreadyUrl(val: string): boolean {
     return val.startsWith('https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%23');
+  }
+
+  isConfirmed(wunsch: WunschMatch): boolean {
+    return (wunsch.members.length === 1 && wunsch.isExact) || !!wunsch.isManuallyConfirmed;
   }
 
   getConfirmedMember(wunsch: WunschMatch): GroupMember | null {
@@ -408,13 +449,17 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
     const status = this.$wuenscheMap().get(rowId);
     const wunsch = status?.wuensche.find(w => w.fieldName === fieldName);
     const wunschText = wunsch?.text || wunsch?.rawValue || '';
+    const confirmedMember = wunsch && this.isConfirmed(wunsch) ? this.getConfirmedMember(wunsch) : null;
+    const isIgnored = wunsch?.isIgnored || false;
 
     this.searchQuery.set(wunschText);
     this.resolveState.set({
       rowId,
       fieldName,
-      candidates,
-      selected: [],
+      candidates: confirmedMember || isIgnored ? [] : candidates,
+      selected: confirmedMember ? [confirmedMember] : [],
+      confirmedMember,
+      isIgnored
     });
     this.modalRef = this.modalService.show(template, { class: 'modal-lg' });
   }
@@ -433,6 +478,29 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
       this.confirmMatch(state.rowId, state.fieldName, state.selected[0]);
       this.modalRef?.hide();
     }
+  }
+
+  acceptMatch(rowId: number, fieldName: string) {
+    this.$wuenscheMap.update(currentMap => {
+      const newMap = new Map(currentMap);
+      const oldStatus = newMap.get(rowId);
+      if (!oldStatus) return newMap;
+
+      const newStatus = { ...oldStatus, wuensche: [...oldStatus.wuensche] };
+      const wIndex = newStatus.wuensche.findIndex(w => w.fieldName === fieldName);
+
+      if (wIndex > -1) {
+        const wunsch = { ...newStatus.wuensche[wIndex] };
+        wunsch.isIgnored = true;
+        wunsch.isManuallyConfirmed = false;
+        newStatus.wuensche[wIndex] = wunsch;
+
+        this.updateStatusFlags(newStatus);
+        newMap.set(rowId, newStatus);
+      }
+      return newMap;
+    });
+    this.modalRef?.hide();
   }
 
   confirmMatch(rowId: number, fieldName: string, selectedIndexOrMember?: number | GroupMember) {
@@ -459,28 +527,53 @@ export class SolaTeilnehmerAnmeldungenComponent implements OnChanges {
         }
         
         wunsch.isManuallyConfirmed = true;
+        wunsch.isIgnored = false;
         newStatus.wuensche[wIndex] = wunsch;
 
-        let allFound = true;
-        let hasManual = false;
-
-        for (const w of newStatus.wuensche) {
-          const isConfirmed = (w.members.length === 1 && w.isExact) || w.isManuallyConfirmed;
-          if (!isConfirmed) {
-            allFound = false;
-          }
-          if (w.isManuallyConfirmed) {
-            hasManual = true;
-          }
-        }
-
-        newStatus.allFound = allFound;
-        newStatus.hasManual = hasManual;
-        newStatus.allSaved = newStatus.allFound && newStatus.wuensche.every(w => this.isAlreadyUrl(w.rawValue));
-
+        this.updateStatusFlags(newStatus);
         newMap.set(rowId, newStatus);
       }
       return newMap;
+    });
+  }
+
+  resetMatch(rowId: number, fieldName: string) {
+    this.$wuenscheMap.update(currentMap => {
+      const newMap = new Map(currentMap);
+      const oldStatus = newMap.get(rowId);
+      if (!oldStatus) return newMap;
+
+      const newStatus = { ...oldStatus, wuensche: [...oldStatus.wuensche] };
+      const wIndex = newStatus.wuensche.findIndex(w => w.fieldName === fieldName);
+
+      if (wIndex > -1) {
+        const row = this.anmeldungen().find(m => m.id === rowId);
+        if (row) {
+          const originalMatch = this.processWunschField(row, fieldName, this.anmeldungen());
+          if (originalMatch) {
+            newStatus.wuensche[wIndex] = originalMatch;
+          }
+        }
+        
+        this.updateStatusFlags(newStatus);
+        newMap.set(rowId, newStatus);
+      }
+      return newMap;
+    });
+
+    // Modal offen lassen und auf den Auswahl-Modus zurücksetzen
+    const status = this.$wuenscheMap().get(rowId);
+    const wunsch = status?.wuensche.find(w => w.fieldName === fieldName);
+    
+    this.resolveState.update(state => {
+      if (!state) return null;
+      return {
+        ...state,
+        candidates: wunsch ? wunsch.members : [],
+        selected: [],
+        confirmedMember: null,
+        isIgnored: false
+      };
     });
   }
 
