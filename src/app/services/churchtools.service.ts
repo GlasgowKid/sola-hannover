@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { BehaviorSubject, from, map, Observable, of, ReplaySubject, switchMap, take, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { DomainObjectGroup, Group, GroupMember, GroupMemberField, GroupMemberFieldGroup, GroupType } from '../../utils/ct-types';
+import { DomainObjectGroup, Group, GroupMember, GroupMemberField, GroupMemberFieldGroup, GroupType, DomainObject } from '../../utils/ct-types';
 
 @Injectable({
   providedIn: 'root',
@@ -43,6 +43,14 @@ export class ChurchtoolsService {
   getJahre(): Observable<Group[]> {
     return this.groupTypeFilter("Jahr").pipe(
       switchMap(params => from(churchtoolsClient.get<Group[]>("/groups", params)))
+    );
+  }
+
+  getJahreManaged(yearId?: number): Observable<Group[]> {
+    return this.groupTypeFilter("Jahr").pipe(
+      switchMap(params => from(churchtoolsClient.get<DomainObjectGroup[]>(`/groups/${yearId}/children`, params))),
+      map(dogs => dogs.map(dog => dog.domainIdentifier)),
+      switchMap(ids => ids.length > 0 ? from(churchtoolsClient.get<Group[]>(`/groups`, { ids })) : of([])),
     );
   }
 
@@ -90,6 +98,32 @@ export class ChurchtoolsService {
           ? from(churchtoolsClient.patch<GroupMember>(`/groups/${groupId}/members/${personId}`, value))
           : throwError(() => new Error("Not logged in"))
       )
+    );
+  }
+  updateGroupMemberFields(groupId: number, personId: number, fieldData: Record<number, any>): Observable<GroupMember> {
+    return this.loggedIn$.pipe(
+      switchMap((loggedIn) =>
+        loggedIn
+          ? from(churchtoolsClient.patch<GroupMember>(`/groups/${groupId}/members/${personId}`, {
+            fields: fieldData
+          }))
+          : throwError(() => new Error("Not logged in"))
+      )
+    );
+  }
+
+  getGroupRoles(groupId: number): Observable<any[]> {
+    return this.loggedIn$.pipe(
+      switchMap((loggedIn) =>
+        loggedIn
+          ? from(churchtoolsClient.get<any>(`/groups/${groupId}/roles`))
+          : of([])
+      ),
+      map(response => {
+        if (Array.isArray(response)) return response;
+        if (response && Array.isArray(response.data)) return response.data;
+        return [];
+      })
     );
   }
 }
