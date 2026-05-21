@@ -163,4 +163,24 @@ describe('ChurchtoolsService', () => {
       }
     });
   });
+
+  it('should pass fields as a Record (key-value object) in the PATCH request for updateGroupMember', (done) => {
+    environment.production = true;
+    (churchtoolsClient.patch as jest.Mock).mockResolvedValue({ id: 638 });
+    
+    spectator = createService();
+
+    const updatePayload = {
+      fields: { "1430": "https://neuer-wunsch.link" }
+    };
+
+    spectator.service.updateGroupMember(155, 638, updatePayload).subscribe(result => {
+      expect(churchtoolsClient.patch).toHaveBeenCalledWith('/groups/155/members/638', expect.objectContaining({
+        fields: { "1430": "https://neuer-wunsch.link" }
+      }));
+      
+      expect(result).toEqual({ id: 638 });
+      done();
+    });
+  });
 });

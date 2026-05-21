@@ -87,29 +87,43 @@ export class AnmeldungenComponent {
     try {
       this.$updateProgress.set(0.01);
 
-      const fieldsDefs = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
-      if (!fieldsDefs) return;
-
       for (const [index, item] of payloads.entries()) {
         try {
-          let newFields = [...item.member.fields];
+          // ChurchTools API erwartet für individuelle Felder die Feld-ID als Key
+          const ctFieldsToUpdate: Record<string, any> = {};
 
           for (const u of item.updates) {
-            const def = fieldsDefs.find(f => f.name === u.fieldName);
-            if (def) {
-              newFields = newFields.filter(f => f.id !== def.id);
-              newFields.push({ id: def.id, name: def.name, value: u.value, sortKey: def.sortKey });
+            const existingField = item.member.fields.find(f => f.name === u.fieldName || f.name.toLowerCase() === u.fieldName.toLowerCase());
+            if (existingField) {
+              const normalizedExisting = existingField?.value == null ? '' : String(existingField.value);
+              const normalizedNew = u.value == null ? '' : String(u.value);
+
+              // Nur in den PATCH-Request aufnehmen, wenn sich der Wert wirklich geändert hat
+              if (normalizedExisting !== normalizedNew) {
+                ctFieldsToUpdate[existingField.id] = u.value;
+              }
+            } else {
+              console.warn(`Feld '${u.fieldName}' wurde beim Teilnehmer nicht gefunden und übersprungen.`);
             }
+          }
+
+          if (Object.keys(ctFieldsToUpdate).length === 0) {
+            this.$updateProgress.set((index + 1) / payloads.length);
+            continue; // Keine echten Änderungen -> API-Call überspringen!
           }
 
           const updatedMember = await firstValueFrom(
             this.churchToolsService.updateGroupMember(groupId, item.member.personId, {
-              fields: newFields,
-              groupMemberStatus: item.member.groupMemberStatus
+              fields: ctFieldsToUpdate as any
             })
           );
 
-          item.member.fields = updatedMember.fields;
+          // Das Original-Objekt im zentralen State aktualisieren,
+          // da item.member nur ein flaches ViewModel (Klon) aus SofaAnmeldungen ist!
+          const originalMember = this.$anmeldungen().find(m => m.id === item.member.id);
+          if (originalMember) {
+            originalMember.fields = updatedMember.fields;
+          }
         } catch (err) {
           console.error(`Fehler ID ${item.member.id}`, err);
         }

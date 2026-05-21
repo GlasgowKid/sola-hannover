@@ -15,7 +15,6 @@ describe('AnmeldungenComponent', () => {
       { id: 2, information: { dateOfFoundation: null } }
     ])),
     getAnmeldungen: jest.fn().mockReturnValue(of([{ id: 100, personId: 1000, fields: [] }])),
-    getGroupMemberFields: jest.fn().mockReturnValue(of([{ id: 10, name: 'Wunsch 1', sortKey: 1 }])),
     updateGroupMember: jest.fn().mockReturnValue(of({ fields: [{ id: 10, name: 'Wunsch 1', value: 'Test', sortKey: 1 }] }))
   };
 
@@ -83,19 +82,17 @@ describe('AnmeldungenComponent', () => {
   describe('performCentralUpdate', () => {
     it('should abort early if no group is selected or progress is running', async () => {
       await spectator.component.performCentralUpdate([{ member: {} as any, updates: [] }]);
-      expect(mockChurchtoolsService.getGroupMemberFields).not.toHaveBeenCalled();
 
       spectator.component.onWeekSelected(1);
       spectator.component.$updateProgress.set(0.5); // Fortschritt läuft bereits
       await spectator.component.performCentralUpdate([{ member: {} as any, updates: [] }]);
-      expect(mockChurchtoolsService.getGroupMemberFields).not.toHaveBeenCalled();
     });
 
     it('should process payloads, update members, handle rate limit and reset progress', async () => {
       spectator.component.onWeekSelected(1);
       
       const payload = [{
-        member: { id: 100, personId: 1000, fields: [], groupMemberStatus: 'active' } as any,
+        member: { id: 100, personId: 1000, fields: [{ id: 10, name: 'Wunsch 1', value: 'Alt' }], groupMemberStatus: 'active' } as any,
         updates: [{ fieldName: 'Wunsch 1', value: 'Neuer Wunsch' }]
       }];
 
@@ -103,11 +100,13 @@ describe('AnmeldungenComponent', () => {
       const updatePromise = spectator.component.performCentralUpdate(payload);
       await updatePromise;
 
-      expect(mockChurchtoolsService.getGroupMemberFields).toHaveBeenCalledWith(1);
       expect(mockChurchtoolsService.updateGroupMember).toHaveBeenCalledWith(1, 1000, expect.objectContaining({
-        groupMemberStatus: 'active',
-        fields: [{ id: 10, name: 'Wunsch 1', value: 'Neuer Wunsch', sortKey: 1 }]
+        fields: { "10": 'Neuer Wunsch' }
       }));
+
+      // Prüfen, ob das Original-Objekt im Signal $anmeldungen aktualisiert wurde
+      const updatedOriginal = spectator.component.$anmeldungen().find(m => m.id === 100);
+      expect(updatedOriginal?.fields).toEqual([{ id: 10, name: 'Wunsch 1', value: 'Test', sortKey: 1 }]);
 
       expect(spectator.component.$updateProgress()).toBe(1); // 1 / 1
 
@@ -115,6 +114,37 @@ describe('AnmeldungenComponent', () => {
       await new Promise(resolve => setTimeout(resolve, 550));
 
       expect(spectator.component.$updateProgress()).toBe(0); // Progress wieder genullt
+    });
+
+    it('should skip API call if values have not changed', async () => {
+      spectator.component.onWeekSelected(1);
+      
+      const payload = [{
+        member: { id: 100, personId: 1000, fields: [{ id: 10, name: 'Wunsch 1', value: 'Alt' }] } as any,
+        updates: [{ fieldName: 'Wunsch 1', value: 'Alt' }]
+      }];
+
+      await spectator.component.performCentralUpdate(payload);
+
+      expect(mockChurchtoolsService.updateGroupMember).not.toHaveBeenCalled();
+      expect(spectator.component.$updateProgress()).toBe(1);
+    });
+
+    it('should warn and skip fields not found in existing member fields', async () => {
+      spectator.component.onWeekSelected(1);
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const payload = [{
+        member: { id: 100, personId: 1000, fields: [{ id: 10, name: 'Wunsch 1', value: 'Alt' }] } as any,
+        updates: [{ fieldName: 'Unbekanntes Feld', value: 'Neu' }]
+      }];
+
+      await spectator.component.performCentralUpdate(payload);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Feld 'Unbekanntes Feld' wurde beim Teilnehmer nicht gefunden und übersprungen."));
+      expect(mockChurchtoolsService.updateGroupMember).not.toHaveBeenCalled();
+
+      consoleWarnSpy.mockRestore();
     });
   });
 });

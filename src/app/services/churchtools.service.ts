@@ -83,7 +83,7 @@ export class ChurchtoolsService {
     );
   }
 
-  updateGroupMember(groupId: number, personId: number, value: Partial<GroupMember>): Observable<GroupMember> {
+  updateGroupMember(groupId: number, personId: number, value: Partial<Omit<GroupMember, 'fields'>> & { fields?: Record<string, any> }): Observable<GroupMember> {
     return this.loggedIn$.pipe(
       switchMap(
         (loggedIn) => loggedIn

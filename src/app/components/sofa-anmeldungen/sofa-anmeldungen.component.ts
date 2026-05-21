@@ -52,6 +52,13 @@ export class SofaAnmeldungenComponent implements OnChanges {
   readonly $unsavedPayloads = computed<MemberUpdatePayload[]>(() => {
     return this.$internalData()
       .filter(m => m.groupMemberStatus === MemberStatus.REQUESTED)
+      .filter(m => {
+        // Nur Payload erzeugen, wenn der Familienpreis sich wirklich unterscheidet
+        const existingField = m.fields.find(f => f.name.toLowerCase() === 'familienpreis');
+        const normalizedExisting = existingField?.value == null ? '' : String(existingField.value);
+        const normalizedNew = String(m.familienpreis.gesamt);
+        return normalizedExisting !== normalizedNew;
+      })
       .map(member => ({
         member,
         updates: [{ fieldName: 'familienpreis', value: member.familienpreis.gesamt }]

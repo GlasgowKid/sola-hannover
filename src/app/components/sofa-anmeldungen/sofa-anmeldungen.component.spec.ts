@@ -151,5 +151,25 @@ describe('SofaAnmeldungenComponent', () => {
       expect(emittedPayloads![0].updates[0].fieldName).toBe('familienpreis');
       expect(emittedPayloads![0].updates[0].value).toBe(200); // 80 Basis + 120 Erwachsener
     });
+
+    it('should only generate unsaved payloads for members whose calculated Familienpreis differs from the existing one', () => {
+      spectator.setInput('priceRefDate', new Date('2024-07-01T00:00:00Z'));
+      
+      spectator.setInput('anmeldungen', [
+        createMockMember(1, MemberStatus.REQUESTED, '2015-01-01', [{ name: 'Familienpreis', value: '160' }]), // Identisch -> überspringen
+        createMockMember(2, MemberStatus.REQUESTED, '2010-01-01', [{ name: 'Familienpreis', value: '100' }]), // Falscher Wert -> Payload generieren
+        createMockMember(3, MemberStatus.REQUESTED, '2015-01-01', []) // Noch gar kein Wert -> Payload generieren
+      ]);
+      spectator.component.ngOnChanges();
+
+      const payloads = spectator.component.$unsavedPayloads();
+      expect(payloads.length).toBe(2);
+      
+      expect(payloads[0].member.id).toBe(2);
+      expect(payloads[0].updates).toEqual([{ fieldName: 'familienpreis', value: 200 }]);
+      
+      expect(payloads[1].member.id).toBe(3);
+      expect(payloads[1].updates).toEqual([{ fieldName: 'familienpreis', value: 160 }]);
+    });
   });
 });
