@@ -1,0 +1,12 @@
+<a routerLink="/" class="d-block text-center text-white text-decoration-none mb-3 mt-2">
+  <h6 class="display-6">SOLA Admin</h6>
+</a>
+<ul class="nav nav-pills flex-column w-100">
+  @for (item of menuItems; track item.path) {
+    <li class="nav-item mb-2">
+      <a [routerLink]="item.path" routerLinkActive="active" class="nav-link text-white text-center">
+        {{ item.title }}
+      </a>
+    </li>
+  }
+</ul>
