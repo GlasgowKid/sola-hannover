@@ -1,0 +1,269 @@
+<app-sola-selector
+  [jahre]="$jahre()"
+  [solawochen]="$solawochen()"
+  (yearSelected)="onYearSelected($event)"
+  (weekSelected)="onWeekSelected($event)"
+></app-sola-selector>
+
+<div class="container-fluid px-0 d-flex flex-column gap-3 mt-3">
+  <div class="row g-3 align-items-start">
+    <!-- Linke Spalte: Alle Teilnehmer (MAIN) -->
+    <div class="col-xl-2 col-lg-3 col-md-4">
+      <div class="card shadow-sm">
+        <div
+          class="card-header bg-secondary text-white d-flex justify-content-between align-items-center py-2"
+        >
+          <span class="fw-bold small">Alle Teilnehmer</span>
+          <span class="badge bg-light text-dark">{{ filteredParticipants().length }}</span>
+        </div>
+        @if ($anmeldungen().length > 0) {
+          <div class="p-1.5 bg-light border-bottom">
+            <select class="form-select form-select-sm mb-2" (change)="onFilterChange($event)">
+              <option value='{"type":"all","value":null}'>Kein Filter</option>
+              <optgroup label="Geschlecht">
+                <option value='{"type":"gender","value":1}'>Jungs</option>
+                <option value='{"type":"gender","value":2}'>Mädchen</option>
+              </optgroup>
+            </select>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0"
+                ><i class="bi bi-search text-muted"></i
+              ></span>
+              <input
+                type="text"
+                class="form-control border-start-0 ps-0"
+                placeholder="Suchen..."
+                (input)="updateSearch($event)"
+              />
+            </div>
+          </div>
+          <div
+            class="card-body p-2 group-body bg-light main-pool"
+            [class.drag-over]="dragOverZone === 'main'"
+            (dragover)="allowDrop($event, 'main')"
+            (dragleave)="onDragLeave($event, 'main')"
+            (drop)="onDrop($event, 'main')"
+          >
+            @for (item of filteredParticipants(); track item.id) {
+              <ng-container
+                *ngTemplateOutlet="
+                  participantTemplate;
+                  context: { $implicit: item, sourceZone: 'main' }
+                "
+              ></ng-container>
+            } @empty {
+              <div class="text-center text-muted mt-3 small">Keine Teilnehmer gefunden.</div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Rechte Spalte: 8 Stämme -->
+    <div class="col-xl-10 col-lg-9 col-md-8">
+      <div class="row g-3">
+        @for (group of $staemme(); track $index; let stammIdx = $index) {
+          <div class="col-xl-3 col-lg-4 col-sm-6">
+            <div class="card shadow-sm h-100 border-primary">
+              <div
+                class="card-header bg-primary text-white p-2 d-flex justify-content-between align-items-center small"
+              >
+                <div class="text-truncate fw-semibold">Stamm {{ stammIdx + 1 }}</div>
+                @let counts = getGenderCounts(group);
+                <span class="badge bg-light text-dark ms-2 flex-shrink-0">
+                  <span class="text-primary">{{ counts.boys }}</span> /
+                  <span class="text-danger">{{ counts.girls }}</span>
+                </span>
+              </div>
+              <div class="p-1 bg-light border-bottom small text-center text-muted">
+                Ø Alter: {{ getAverageAge(group) }} | Varianz: {{ getAgeVariance(group) }}
+              </div>
+
+              <div
+                class="card-body p-2 group-body"
+                [class.drag-over]="dragOverZone === 'stamm-' + stammIdx"
+                (dragover)="allowDrop($event, 'stamm-' + stammIdx)"
+                (dragleave)="onDragLeave($event, 'stamm-' + stammIdx)"
+                (drop)="onDrop($event, 'stamm-' + stammIdx)"
+              >
+                @for (item of group; track getItemId(item)) {
+                  @if (isGroupWrapper(item)) {
+                    <!-- GRUPPE IM STAMM (Kann als Ganzes in einen anderen Stamm verschoben werden) -->
+                    <div
+                      class="card shadow-sm group-wrapper-card d-flex flex-column mb-1 cursor-grab"
+                      draggable="true"
+                      (dragstart)="
+                        onDragStart($event, {
+                          type: 'GROUP',
+                          sourceZone: 'stamm-' + stammIdx,
+                          data: item,
+                        })
+                      "
+                    >
+                      <div
+                        class="text-center text-muted small bg-light border-bottom"
+                        style="opacity: 0.5"
+                      >
+                        <i class="bi bi-grid-3x3-gap-fill"></i>
+                      </div>
+                      <div class="card-body p-1 bg-white">
+                        @for (p of item.participants; track p.id) {
+                          <ng-container
+                            *ngTemplateOutlet="
+                              participantTemplate;
+                              context: { $implicit: p, sourceZone: 'stamm-' + stammIdx }
+                            "
+                          ></ng-container>
+                        }
+                      </div>
+                    </div>
+                  } @else {
+                    <!-- NACKTER TEILNEHMER IM STAMM -->
+                    <ng-container
+                      *ngTemplateOutlet="
+                        participantTemplate;
+                        context: { $implicit: item, sourceZone: 'stamm-' + stammIdx }
+                      "
+                    ></ng-container>
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if ($anmeldungen().length > 0) {
+    <nav
+      class="navbar navbar-expand-md navbar-light bg-light border rounded shadow-sm p-2 sticky-bottom mb-3"
+    >
+      <div class="container-fluid px-1 d-flex flex-wrap gap-3 justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+          <div class="form-check form-switch m-0">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="idToggle"
+              [checked]="showIds()"
+              (change)="toggleIds()"
+            /><label class="form-check-label fw-semibold text-muted small" for="idToggle"
+              >Debug</label
+            >
+          </div>
+          <div class="form-check form-switch m-0">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="details"
+              [checked]="details()"
+              (change)="toggleDetails()"
+            /><label class="form-check-label fw-semibold text-muted small" for="details"
+              >Details</label
+            >
+          </div>
+        </div>
+
+        <!-- UNTERE POOL LEISTE -->
+        <div class="d-flex align-items-stretch gap-2 py-1">
+          <span class="navbar-text fw-bold text-uppercase small py-0 d-flex align-items-center"
+            >Pool:</span
+          >
+          <div class="d-flex gap-2 align-items-stretch pool-wrappers">
+            @for (wrap of $pools(); track wrap.id; let poolIdx = $index) {
+              <div
+                class="card shadow-sm group-wrapper-card d-flex flex-column cursor-grab"
+                draggable="true"
+                (dragstart)="
+                  onDragStart($event, {
+                    type: 'POOL',
+                    sourceZone: wrap.id,
+                    data: wrap.participants,
+                  })
+                "
+              >
+                <div
+                  class="card-body p-1 flex-grow-1 bg-white wrapper-body"
+                  [class.drag-over]="dragOverZone === wrap.id"
+                  (dragover)="allowDrop($event, wrap.id)"
+                  (dragleave)="onDragLeave($event, wrap.id)"
+                  (drop)="onDrop($event, wrap.id)"
+                >
+                  @for (p of wrap.participants; track p.id) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        participantTemplate;
+                        context: { $implicit: p, sourceZone: wrap.id }
+                      "
+                    ></ng-container>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-sm btn-outline-danger py-0.5 px-2" (click)="confirmLoadServer()">
+            <i class="bi bi-cloud-download"></i> Letzte Einteilung abrufen
+          </button>
+          <button
+            class="btn btn-sm btn-primary py-0.5 px-2"
+            (click)="saveGroupsServer()"
+            [disabled]="$progress() > 0 || !isDirty()"
+          >
+            <i class="bi bi-cloud-upload"></i> Stammeseinteilung übertragen
+            @if ($progress() > 0) {
+              ({{ $progress() | percent }})
+            }
+          </button>
+        </div>
+      </div>
+    </nav>
+  }
+</div>
+
+<!-- Die kompakte Teilnehmerkarte -->
+<ng-template #participantTemplate let-item let-sourceZone="sourceZone">
+  <div
+    class="p-1 mb-1 border rounded shadow-sm lh-sm small d-flex justify-content-between align-items-center participant-card cursor-move"
+    draggable="true"
+    (dragstart)="
+      onDragStart($event, { type: 'PARTICIPANT', sourceZone: sourceZone, data: item });
+      $event.stopPropagation()
+    "
+    [ngClass]="{
+      'border-primary bg-primary-subtle': item.personFields?.sexId === 1,
+      'border-danger bg-danger-subtle': item.personFields?.sexId === 2,
+      'bg-white': item.personFields?.sexId !== 1 && item.personFields?.sexId !== 2,
+    }"
+    [attr.data-id]="item.id"
+  >
+    <div class="text-wrap text-break d-flex align-items-center">
+      <i class="bi bi-person-fill text-muted me-2"></i>
+      <span class="fw-bold"
+        >{{ item.person.domainAttributes.firstName }}
+        {{ item.person.domainAttributes.lastName }}</span
+      >
+      @if (getAgeThisYear(item.personFields?.birthday); as age) {
+        <span class="fw-normal ms-1">({{ age }})</span>
+      }
+      @if (showIds()) {
+        <small class="text-muted ms-1">#{{ item.id }}</small>
+      }
+    </div>
+    <!-- ZURÜCKSETZEN BUTTON (X) -->
+    @if (sourceZone !== 'main') {
+      <button
+        type="button"
+        class="btn-close btn-close-sm ms-2 flex-shrink-0"
+        aria-label="Close"
+        (click)="resetParticipant(item); $event.stopPropagation()"
+        title="Zurücksetzen"
+      ></button>
+    }
+  </div>
+</ng-template>

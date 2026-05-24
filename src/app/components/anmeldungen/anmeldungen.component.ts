@@ -1,11 +1,13 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
 import { parseISO, startOfYear } from 'date-fns';
-import { Subject, distinctUntilChanged, firstValueFrom, switchMap } from 'rxjs';
+import { BsModalService } from 'ngx-bootstrap/modal';
+import { Subject, distinctUntilChanged, firstValueFrom, switchMap, take } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
+import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
 import { SofaAnmeldungViewModel, SofaAnmeldungenComponent } from '../sofa-anmeldungen/sofa-anmeldungen.component';
 import { SolaSelectorComponent } from '../sola-selector/sola-selector.component';
 import { SolaTeilnehmerAnmeldungenComponent } from '../sola-teilnehmer-anmeldungen/sola-teilnehmer-anmeldungen.component';
@@ -31,6 +33,10 @@ export interface MemberUpdatePayload {
 })
 export class AnmeldungenComponent {
   private readonly churchToolsService = inject(ChurchtoolsService);
+  private readonly modalService = inject(BsModalService);
+
+  @ViewChild('sofa') sofa?: SofaAnmeldungenComponent;
+  @ViewChild('solaTeilnehmer') solaTeilnehmer?: SolaTeilnehmerAnmeldungenComponent;
 
   readonly $jahre = toSignal(this.churchToolsService.getJahre());
   readonly $selectedWeek = signal<number | null>(null);
@@ -67,17 +73,59 @@ export class AnmeldungenComponent {
   }
 
   onYearSelected(yearId: number) {
+    if (!this.canDeactivate()) {
+      const modalRef = this.modalService.show(ConfirmModalComponent, {
+        initialState: {
+          title: 'Ungespeicherte Änderungen',
+          message: 'Es gibt ungespeicherte Zuordnungen. Möchten Sie das Jahr wirklich wechseln? Änderungen gehen verloren.',
+          confirmText: 'Verwerfen',
+          cancelText: 'Abbrechen'
+        }
+      });
+      modalRef.content!.onClose.pipe(take(1)).subscribe(res => {
+        if (res) this.forceClearAndSelectYear(yearId);
+      });
+      return;
+    }
+    this.forceClearAndSelectYear(yearId);
+  }
+
+  private forceClearAndSelectYear(yearId: number) {
     this.$anmeldungen.set([]);
     this.yearSelectedSubject.next(yearId);
   }
 
   onWeekSelected(weekId: number) {
+    if (!this.canDeactivate()) {
+      const modalRef = this.modalService.show(ConfirmModalComponent, {
+        initialState: {
+          title: 'Ungespeicherte Änderungen',
+          message: 'Es gibt ungespeicherte Zuordnungen. Möchten Sie die Woche wirklich wechseln? Änderungen gehen verloren.',
+          confirmText: 'Verwerfen',
+          cancelText: 'Abbrechen'
+        }
+      });
+      modalRef.content!.onClose.pipe(take(1)).subscribe(res => {
+        if (res) this.forceClearAndSelectWeek(weekId);
+      });
+      return;
+    }
+    this.forceClearAndSelectWeek(weekId);
+  }
+
+  private forceClearAndSelectWeek(weekId: number) {
     this.$selectedWeek.set(weekId);
     this.weekSelectedSubject.next(weekId);
   }
 
   onSofaDataProcessed(anmeldungen: SofaAnmeldungViewModel[]) {
     this.$displayData.set(anmeldungen);
+  }
+
+  canDeactivate(): boolean {
+    const sofaDirty = this.sofa ? this.sofa.$unsavedPayloads().length > 0 : false;
+    const solaDirty = this.solaTeilnehmer ? this.solaTeilnehmer.$unsavedPayloads().length > 0 : false;
+    return !(sofaDirty || solaDirty);
   }
 
   async performCentralUpdate(payloads: MemberUpdatePayload[]) {

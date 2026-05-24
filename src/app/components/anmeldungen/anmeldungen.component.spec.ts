@@ -1,9 +1,10 @@
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
-import { of } from 'rxjs';
 import { startOfYear } from 'date-fns';
-import { AnmeldungenComponent } from './anmeldungen.component';
+import { BsModalService } from 'ngx-bootstrap/modal';
+import { of } from 'rxjs';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { SolaTeilnehmerAnmeldungenComponent } from '../sola-teilnehmer-anmeldungen/sola-teilnehmer-anmeldungen.component';
+import { AnmeldungenComponent } from './anmeldungen.component';
 
 describe('AnmeldungenComponent', () => {
   let spectator: Spectator<AnmeldungenComponent>;
@@ -18,11 +19,16 @@ describe('AnmeldungenComponent', () => {
     updateGroupMember: jest.fn().mockReturnValue(of({ fields: [{ id: 10, name: 'Wunsch 1', value: 'Test', sortKey: 1 }] }))
   };
 
+  const mockModalService = {
+    show: jest.fn().mockReturnValue({ content: { onClose: of(true) } })
+  };
+
   const createComponent = createComponentFactory({
     component: AnmeldungenComponent,
     shallow: true, // Verhindert das Rendern von Kind-Komponenten, testet isoliert die Logik!
     providers: [
-      { provide: ChurchtoolsService, useValue: mockChurchtoolsService }
+      { provide: ChurchtoolsService, useValue: mockChurchtoolsService },
+      { provide: BsModalService, useValue: mockModalService }
     ]
   });
 
@@ -39,7 +45,7 @@ describe('AnmeldungenComponent', () => {
 
   it('should load solawochen and reset anmeldungen when a year is selected', () => {
     spectator.component.onYearSelected(2024);
-    
+
     expect(mockChurchtoolsService.getSolawochen).toHaveBeenCalledWith(2024);
     expect(spectator.component.$solawochen()?.length).toBe(2);
     expect(spectator.component.$anmeldungen()).toEqual([]);
@@ -47,7 +53,7 @@ describe('AnmeldungenComponent', () => {
 
   it('should load anmeldungen and update selectedWeek when a week is selected', () => {
     spectator.component.onWeekSelected(1);
-    
+
     expect(spectator.component.$selectedWeek()).toBe(1);
     expect(mockChurchtoolsService.getAnmeldungen).toHaveBeenCalledWith(1);
     expect(spectator.component.$anmeldungen()?.length).toBe(1);
@@ -55,7 +61,7 @@ describe('AnmeldungenComponent', () => {
 
   it('should compute $priceRefDate correctly based on the selected week', () => {
     spectator.component.onYearSelected(2024);
-    
+
     // Woche mit Datum
     spectator.component.onWeekSelected(1);
     expect(spectator.component.$priceRefDate().toISOString()).toBe('2024-07-01T00:00:00.000Z');
@@ -69,7 +75,7 @@ describe('AnmeldungenComponent', () => {
   it('should update $displayData when sofa data is processed', () => {
     const mockData: any[] = [{ id: 1, name: 'Test' }];
     spectator.component.onSofaDataProcessed(mockData as any);
-    
+
     expect(spectator.component.$displayData()).toEqual(mockData);
   });
 
@@ -90,7 +96,7 @@ describe('AnmeldungenComponent', () => {
 
     it('should process payloads, update members, handle rate limit and reset progress', async () => {
       spectator.component.onWeekSelected(1);
-      
+
       const payload = [{
         member: { id: 100, personId: 1000, fields: [{ id: 10, name: 'Wunsch 1', value: 'Alt' }], groupMemberStatus: 'active' } as any,
         updates: [{ fieldName: 'Wunsch 1', value: 'Neuer Wunsch' }]
@@ -118,7 +124,7 @@ describe('AnmeldungenComponent', () => {
 
     it('should skip API call if values have not changed', async () => {
       spectator.component.onWeekSelected(1);
-      
+
       const payload = [{
         member: { id: 100, personId: 1000, fields: [{ id: 10, name: 'Wunsch 1', value: 'Alt' }] } as any,
         updates: [{ fieldName: 'Wunsch 1', value: 'Alt' }]
@@ -132,7 +138,7 @@ describe('AnmeldungenComponent', () => {
 
     it('should warn and skip fields not found in existing member fields', async () => {
       spectator.component.onWeekSelected(1);
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
 
       const payload = [{
         member: { id: 100, personId: 1000, fields: [{ id: 10, name: 'Wunsch 1', value: 'Alt' }] } as any,

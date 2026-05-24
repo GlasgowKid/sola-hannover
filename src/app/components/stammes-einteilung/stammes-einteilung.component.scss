@@ -1,0 +1,55 @@
+.cursor-move {
+  cursor: move;
+}
+.cursor-grab {
+  cursor: grab;
+}
+.cursor-grab:active {
+  cursor: grabbing;
+}
+.group-body {
+  min-height: 120px;
+}
+.pool-wrappers {
+  min-height: 28px;
+  min-width: 140px;
+}
+
+.group-wrapper-card {
+  min-width: 140px;
+  border: 2px dashed var(--bs-border-color);
+}
+
+.wrapper-body {
+  min-height: 40px;
+}
+.main-pool {
+  max-height: 600px;
+  overflow-y: auto;
+}
+.btn-close-sm {
+  font-size: 0.6rem;
+}
+
+.overlay-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-card {
+  min-width: 300px;
+}
+
+// Natives Drag & Drop visuelles Feedback
+.drag-over {
+  background-color: var(--bs-primary-bg-subtle) !important;
+  border: 2px dashed var(--bs-primary) !important;
+}

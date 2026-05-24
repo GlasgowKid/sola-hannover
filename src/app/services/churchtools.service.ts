@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { BehaviorSubject, from, map, Observable, of, ReplaySubject, switchMap, take, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { DomainObjectGroup, Group, GroupMember, GroupMemberField, GroupMemberFieldGroup, GroupType, DomainObject } from '../../utils/ct-types';
+import { DomainObjectGroup, Group, GroupMember, GroupMemberField, GroupMemberFieldGroup, GroupType } from '../../utils/ct-types';
 
 @Injectable({
   providedIn: 'root',
@@ -80,6 +80,12 @@ export class ChurchtoolsService {
     );
   }
 
+  getTeilnehmer(groupId: number): Observable<GroupMember[]> {
+    return this.getAnmeldungen(groupId).pipe(
+      map(members => members.filter(m => m.groupTypeRoleId === 32))
+    );
+  }
+
   getGroupMemberFields(groupId: number): Observable<GroupMemberFieldGroup[]> {
     return this.loggedIn$.pipe(
       switchMap(
@@ -101,15 +107,7 @@ export class ChurchtoolsService {
     );
   }
   updateGroupMemberFields(groupId: number, personId: number, fieldData: Record<number, any>): Observable<GroupMember> {
-    return this.loggedIn$.pipe(
-      switchMap((loggedIn) =>
-        loggedIn
-          ? from(churchtoolsClient.patch<GroupMember>(`/groups/${groupId}/members/${personId}`, {
-            fields: fieldData
-          }))
-          : throwError(() => new Error("Not logged in"))
-      )
-    );
+    return this.updateGroupMember(groupId, personId, { fields: fieldData });
   }
 
   getGroupRoles(groupId: number): Observable<any[]> {

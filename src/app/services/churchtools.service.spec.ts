@@ -1,7 +1,7 @@
-import { createServiceFactory, SpectatorService } from '@ngneat/spectator/jest';
-import { ChurchtoolsService } from './churchtools.service';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { createServiceFactory, SpectatorService } from '@ngneat/spectator/jest';
 import { environment } from '../../environments/environment';
+import { ChurchtoolsService } from './churchtools.service';
 
 jest.mock('@churchtools/churchtools-client', () => ({
   churchtoolsClient: {
@@ -28,12 +28,12 @@ describe('ChurchtoolsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     (churchtoolsClient.post as jest.Mock).mockResolvedValue({});
     (churchtoolsClient.get as jest.Mock).mockResolvedValue([]);
     (churchtoolsClient.getAllPages as jest.Mock).mockResolvedValue([]);
     (churchtoolsClient.patch as jest.Mock).mockResolvedValue({});
-    
+
     environment.production = false;
   });
 
@@ -46,7 +46,7 @@ describe('ChurchtoolsService', () => {
 
       expect(churchtoolsClient.setBaseUrl).toHaveBeenCalledWith('https://test.church.tools');
       expect(churchtoolsClient.post).toHaveBeenCalledWith('/login', { username: 'testuser', password: 'testpassword' });
-      
+
       // Warten, bis das Login-Promise aufgelöst ist
       await new Promise(process.nextTick);
 
@@ -58,9 +58,9 @@ describe('ChurchtoolsService', () => {
       spectator = createService();
 
       expect(churchtoolsClient.post).not.toHaveBeenCalled();
-      
+
       await new Promise(process.nextTick);
-      
+
       expect(churchtoolsClient.get).toHaveBeenCalledWith('/group/grouptypes');
     });
   });
@@ -93,10 +93,10 @@ describe('ChurchtoolsService', () => {
     it('should getJahre correctly', (done) => {
       const mockJahre = [{ id: 10, name: '2024' }];
       (churchtoolsClient.get as jest.Mock).mockImplementation((url, params) => {
-          if (url === '/groups' && params?.group_type_ids?.includes(1)) {
-              return Promise.resolve(mockJahre);
-          }
-          return Promise.resolve([]);
+        if (url === '/groups' && params?.group_type_ids?.includes(1)) {
+          return Promise.resolve(mockJahre);
+        }
+        return Promise.resolve([]);
       });
 
       spectator.service.getJahre().subscribe(res => {
@@ -109,9 +109,9 @@ describe('ChurchtoolsService', () => {
     it('should getSolawochen with yearGroupId', (done) => {
       const mockWochen = [{ id: 30, name: 'Woche 2' }];
       (churchtoolsClient.get as jest.Mock).mockImplementation((url, params) => {
-          if (url === '/groups/10/children') return Promise.resolve([{ domainIdentifier: 30 }]);
-          if (url === '/groups' && params?.ids?.includes(30)) return Promise.resolve(mockWochen);
-          return Promise.resolve([]);
+        if (url === '/groups/10/children') return Promise.resolve([{ domainIdentifier: 30 }]);
+        if (url === '/groups' && params?.ids?.includes(30)) return Promise.resolve(mockWochen);
+        return Promise.resolve([]);
       });
 
       spectator.service.getSolawochen(10).subscribe(res => {
@@ -129,6 +129,16 @@ describe('ChurchtoolsService', () => {
       spectator.service.getAnmeldungen(30).subscribe(res => {
         expect(res).toEqual(mockMembers);
         expect(churchtoolsClient.getAllPages).toHaveBeenCalledWith('/groups/30/members', { personFields: ["birthday", "sexId", "street", "zip", "city"] });
+        done();
+      });
+    });
+
+    it('should getTeilnehmer and filter by groupTypeRoleId 32', (done) => {
+      const mockMembers = [{ id: 100, personId: 1000, groupTypeRoleId: 32 }, { id: 101, personId: 1001, groupTypeRoleId: 1 }];
+      (churchtoolsClient.getAllPages as jest.Mock).mockResolvedValue(mockMembers);
+
+      spectator.service.getTeilnehmer(30).subscribe(res => {
+        expect(res).toEqual([{ id: 100, personId: 1000, groupTypeRoleId: 32 }]);
         done();
       });
     });
@@ -152,10 +162,10 @@ describe('ChurchtoolsService', () => {
 
   it('should throw error if updateGroupMember is called without login', (done) => {
     // Login künstlich verzögern, um fehlenden Login-Status zu provozieren
-    (churchtoolsClient.post as jest.Mock).mockReturnValue(new Promise(() => {}));
-    
+    (churchtoolsClient.post as jest.Mock).mockReturnValue(new Promise(() => { }));
+
     spectator = createService();
-    
+
     spectator.service.updateGroupMember(1, 2, {}).subscribe({
       error: (err) => {
         expect(err.message).toBe('Not logged in');
@@ -167,7 +177,7 @@ describe('ChurchtoolsService', () => {
   it('should pass fields as a Record (key-value object) in the PATCH request for updateGroupMember', (done) => {
     environment.production = true;
     (churchtoolsClient.patch as jest.Mock).mockResolvedValue({ id: 638 });
-    
+
     spectator = createService();
 
     const updatePayload = {
@@ -178,7 +188,7 @@ describe('ChurchtoolsService', () => {
       expect(churchtoolsClient.patch).toHaveBeenCalledWith('/groups/155/members/638', expect.objectContaining({
         fields: { "1430": "https://neuer-wunsch.link" }
       }));
-      
+
       expect(result).toEqual({ id: 638 });
       done();
     });
