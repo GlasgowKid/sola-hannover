@@ -1,0 +1,53 @@
+<div class="card shadow-sm">
+  <div
+    class="card-header bg-secondary text-white d-flex justify-content-between align-items-center py-2"
+  >
+    <span class="fw-bold small">Alle Teilnehmer</span>
+    <span class="badge bg-light text-dark">{{ participants().length }}</span>
+  </div>
+  @if (hasAnmeldungen()) {
+    <div class="p-1.5 bg-light border-bottom">
+      <select class="form-select form-select-sm mb-2" (change)="filterChange.emit($event)">
+        <option value='{"type":"all","value":null}'>Kein Filter</option>
+        <optgroup label="Geschlecht">
+          <option value='{"type":"gender","value":1}'>Jungs</option>
+          <option value='{"type":"gender","value":2}'>Mädchen</option>
+        </optgroup>
+      </select>
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-white border-end-0"
+          ><i class="bi bi-search text-muted"></i
+        ></span>
+        <input
+          type="text"
+          class="form-control border-start-0 ps-0"
+          placeholder="Suchen..."
+          (input)="searchChange.emit($event)"
+        />
+      </div>
+    </div>
+    <div
+      class="card-body p-2 group-body bg-light main-pool"
+      [class.drag-over]="dragOverZone() === 'main'"
+      (dragover)="dragOverNode.emit($event)"
+      (dragleave)="dragLeaveNode.emit($event)"
+      (drop)="dropNode.emit($event)"
+    >
+      @for (item of participants(); track item.id) {
+        <app-participant-card
+          [item]="item"
+          sourceZone="main"
+          [showIds]="showIds()"
+          (dragStartNode)="
+            dragStartItem.emit({
+              event: $event,
+              payload: { type: 'PARTICIPANT', sourceZone: 'main', data: item },
+            })
+          "
+        ></app-participant-card>
+      } @empty {
+        <div class="text-center text-muted mt-3 small">Keine Teilnehmer gefunden.</div>
+      }
+    </div>
+  }
+</div>

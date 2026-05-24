@@ -1,0 +1,34 @@
+<div
+  class="p-1 mb-1 border rounded shadow-sm lh-sm small d-flex justify-content-between align-items-center participant-card cursor-move"
+  draggable="true"
+  (dragstart)="onDragStart($event)"
+  [ngClass]="{
+    'border-primary bg-primary-subtle': item().personFields?.sexId === 1,
+    'border-danger bg-danger-subtle': item().personFields?.sexId === 2,
+    'bg-white': item().personFields?.sexId !== 1 && item().personFields?.sexId !== 2,
+  }"
+  [attr.data-id]="item().id"
+>
+  <div class="text-wrap text-break d-flex align-items-center">
+    <i class="bi bi-person-fill text-muted me-2"></i>
+    <span class="fw-bold"
+      >{{ item().person.domainAttributes.firstName }}
+      {{ item().person.domainAttributes.lastName }}</span
+    >
+    @if (age(); as a) {
+      <span class="fw-normal ms-1">({{ a }})</span>
+    }
+    @if (showIds()) {
+      <small class="text-muted ms-1">#{{ item().id }}</small>
+    }
+  </div>
+  @if (sourceZone() !== 'main') {
+    <button
+      type="button"
+      class="btn-close btn-close-sm ms-2 flex-shrink-0"
+      aria-label="Close"
+      (click)="onReset($event)"
+      title="Zurücksetzen"
+    ></button>
+  }
+</div>

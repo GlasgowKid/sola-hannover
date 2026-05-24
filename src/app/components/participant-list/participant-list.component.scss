@@ -1,0 +1,11 @@
+.group-body {
+  min-height: 120px;
+}
+.main-pool {
+  max-height: 600px;
+  overflow-y: auto;
+}
+.drag-over {
+  background-color: var(--bs-primary-bg-subtle) !important;
+  border: 2px dashed var(--bs-primary) !important;
+}

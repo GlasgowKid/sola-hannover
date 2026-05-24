@@ -17,7 +17,7 @@ describe('StammesEinteilungComponent', () => {
 
   const createComponent = createComponentFactory({
     component: StammesEinteilungComponent,
-    shallow: true,
+    shallow: false,
     providers: [
       { provide: ChurchtoolsService, useValue: mockChurchtoolsService },
       { provide: BsModalService, useValue: { show: jest.fn() } }
@@ -264,20 +264,6 @@ describe('StammesEinteilungComponent', () => {
       spectator.component.activeFilter.set({ type: 'gender', value: 2 });
       expect(spectator.component.filteredParticipants().length).toBe(1);
       expect(spectator.component.filteredParticipants()[0].id).toBe(2);
-    });
-
-    it('Altersberechnungen (getAverageAge, getAgeVariance) arbeiten korrekt', () => {
-      const currentYear = new Date().getFullYear();
-      const stammMock = [
-        { id: 1, personFields: { birthday: `${currentYear - 10}-01-01` } } as any, // 10 years
-        { id: 2, personFields: { birthday: `${currentYear - 14}-01-01` } } as any, // 14 years
-      ];
-
-      const avg = spectator.component.getAverageAge(stammMock);
-      expect(avg).toBe(12); // (10 + 14) / 2
-
-      const variance = spectator.component.getAgeVariance(stammMock);
-      expect(variance).toBe(4); // ((10-12)^2 + (14-12)^2) / 2 = (4 + 4) / 2 = 4
     });
 
     it('loadGroupsServer ordnet Teilnehmer korrekt aus ChurchTools in Stämme und Main ein', async () => {

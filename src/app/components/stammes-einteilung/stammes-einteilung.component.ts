@@ -1,4 +1,3 @@
-import { NgClass, NgTemplateOutlet, PercentPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
@@ -8,7 +7,10 @@ import { Subject, distinctUntilChanged, firstValueFrom, of, switchMap, take } fr
 import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
+import { ParticipantListComponent } from '../participant-list/participant-list.component';
+import { PoolToolbarComponent } from '../pool-toolbar/pool-toolbar.component';
 import { SolaSelectorComponent } from '../sola-selector/sola-selector.component';
+import { StammComponent } from '../stamm/stamm.component';
 
 export interface GroupWrapper {
   id: string;
@@ -32,7 +34,7 @@ interface UnifiedFilter {
 @Component({
   selector: 'app-stammeseinteilung',
   standalone: true,
-  imports: [NgxDatatableModule, NgTemplateOutlet, SolaSelectorComponent, NgClass, PercentPipe],
+  imports: [NgxDatatableModule, SolaSelectorComponent, ParticipantListComponent, StammComponent, PoolToolbarComponent],
   templateUrl: './stammes-einteilung.component.html',
   styleUrl: './stammes-einteilung.component.scss',
 })
@@ -170,7 +172,7 @@ export class StammesEinteilungComponent {
   // NATIVE HTML5 DRAG AND DROP LOGIC
   // ==========================================
   draggedPayload: DragPayload | null = null;
-  dragOverZone: string | null = null;
+  dragOverZone = signal<string | null>(null);
 
   onDragStart(event: DragEvent, payload: DragPayload) {
     this.draggedPayload = payload;
@@ -181,12 +183,12 @@ export class StammesEinteilungComponent {
   allowDrop(event: DragEvent, zoneId: string) {
     if (this.draggedPayload?.sourceZone === zoneId) return; // Die EIGENE Zone ist gesperrt
     event.preventDefault();
-    this.dragOverZone = zoneId;
+    this.dragOverZone.set(zoneId);
   }
 
   onDragLeave(event: DragEvent, zoneId: string) {
-    if (this.dragOverZone === zoneId) {
-      this.dragOverZone = null;
+    if (this.dragOverZone() === zoneId) {
+      this.dragOverZone.set(null);
     }
   }
 
@@ -198,7 +200,7 @@ export class StammesEinteilungComponent {
 
     event.preventDefault();
     event.stopPropagation();
-    this.dragOverZone = null;
+    this.dragOverZone.set(null);
 
     // Extrahieren der Teilnehmer
     let extracted: GroupMember[] = [];
@@ -209,7 +211,7 @@ export class StammesEinteilungComponent {
     if (extracted.length === 0) return;
 
     const idsToRemove = new Set(extracted.map(p => p.id));
-    
+
     // 1. ZUERST ALLES AUS DEN QUELLEN LÖSCHEN (Deduplizierung)
     let main = this.$anmeldungen().filter(p => !idsToRemove.has(p.id));
     let pools = this.$pools().map(p => ({ ...p, participants: p.participants.filter(x => !idsToRemove.has(x.id)) }));
@@ -267,7 +269,7 @@ export class StammesEinteilungComponent {
   private validateState() {
     const ids = new Set<number>();
     let error = false;
-    
+
     const check = (id: number) => {
       if (ids.has(id)) error = true;
       ids.add(id);
@@ -284,12 +286,12 @@ export class StammesEinteilungComponent {
       console.error("Zustand korrupt!", { expected: this.originalLoadedCount, actual: ids.size });
       this.showErrorModal("Ein Fehler ist beim Verschieben aufgetreten. Die Ansicht wird neu geladen.");
       this.loadGroupsServer();
-      }
+    }
   }
 
   resetParticipant(item: GroupMember) {
     const idsToRemove = new Set([item.id]);
-    
+
     // 1. Aus Pools und Stämmen fegen
     this.$pools.update(ps => ps.map(p => ({ ...p, participants: p.participants.filter(m => !idsToRemove.has(m.id)) })));
     this.$staemme.update(ss => ss.map(stamm => {
@@ -301,7 +303,7 @@ export class StammesEinteilungComponent {
 
     // 2. In Main sicherstellen, dass er genau 1x da ist und alphabetisch sortiert ist
     this.$anmeldungen.update(list => this.sortAlphabetically([item, ...list.filter(m => !idsToRemove.has(m.id))]));
-    
+
     this.isDirty.set(true);
     this.validateState();
   }
@@ -323,15 +325,15 @@ export class StammesEinteilungComponent {
     const filter = this.activeFilter();
 
     return all.filter(m => {
-      const matchesQuery = !query || 
+      const matchesQuery = !query ||
         m.person.domainAttributes.firstName.toLowerCase().includes(query) ||
         m.person.domainAttributes.lastName.toLowerCase().includes(query);
-      
+
       let matchesDropdown = true;
       if (filter.type === 'gender') matchesDropdown = m.personFields?.sexId === filter.value;
       else if (filter.type === 'maRolle') matchesDropdown = this.getMaRolleValue(m) === filter.value;
       else if (filter.type === 'roleId') matchesDropdown = m.groupTypeRoleId === filter.value;
-      
+
       return matchesQuery && matchesDropdown;
     });
   });
@@ -350,10 +352,10 @@ export class StammesEinteilungComponent {
       const allFields = await firstValueFrom(this.churchToolsService.getGroupMemberFields(groupId));
       const targetField = allFields.find(f => this.isGroupField(f.name));
       if (!targetField) return this.showErrorModal('Das Zielfeld (Stammeszugehörigkeit) wurde in ChurchTools nicht gefunden!');
-      
+
       this.$progress.set(0.01);
       const tasks: (() => Promise<void>)[] = [];
-      
+
       this.$staemme().forEach((stamm, i) => {
         const groupName = `Stamm ${i + 1}`;
         this.expandParticipants(stamm).forEach(member => {
@@ -421,7 +423,7 @@ export class StammesEinteilungComponent {
   private distributeParticipants(participants: GroupMember[]) {
     const newStaemme = Array.from({ length: 8 }, () => [] as StammItem[]);
     const remainingInMain: GroupMember[] = [];
-    
+
     participants.forEach(p => {
       const val = p.fields?.find(f => this.isGroupField(f.name))?.value;
       if (val && typeof val === 'string') {
@@ -433,39 +435,15 @@ export class StammesEinteilungComponent {
         remainingInMain.push(p);
       }
     });
-    
+
     this.$staemme.set(newStaemme);
     this.$anmeldungen.set(this.sortAlphabetically(remainingInMain));
     this.resetPools();
     this.isDirty.set(false);
   }
 
-  // Kleine Hilfsfunktionen für die Ansicht
-  getAgeThisYear(birthday: any): number | null {
-    if (!birthday) return null;
-    const bd = parseISO(String(birthday));
-    return isValid(bd) ? new Date().getFullYear() - bd.getFullYear() : null;
-  }
-  getAverageAge(group: StammItem[]): number {
-    const p = this.expandParticipants(group);
-    const ages = p.map(m => this.getAgeThisYear(m.personFields?.birthday)).filter((a): a is number => a !== null && a > 0);
-    return ages.length ? Math.round(10 * ages.reduce((a,b)=>a+b,0) / ages.length) / 10 : 0;
-  }
-  getAgeVariance(group: StammItem[]): number {
-    const p = this.expandParticipants(group);
-    const ages = p.map(m => this.getAgeThisYear(m.personFields?.birthday)).filter((a): a is number => a !== null && a > 0);
-    if (ages.length <= 1) return 0;
-    const mean = ages.reduce((a,b)=>a+b,0) / ages.length;
-    return Math.round((ages.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / ages.length) * 10) / 10;
-  }
-  getGenderCounts(group: StammItem[]) {
-    const p = this.expandParticipants(group);
-    return { boys: p.filter(m => m.personFields?.sexId === 1).length, girls: p.filter(m => m.personFields?.sexId === 2).length };
-  }
-  getWunschField(p: GroupMember): string | null { return null; }
-  getAnmerkungen(p: GroupMember): string | null { return null; }
-  getMaRolleValue(p: GroupMember): string | null { return p.fields?.find(f => f.name === 'MA-Rolle')?.value ? String(p.fields.find(f=>f.name==='MA-Rolle')!.value) : null; }
-  
+  getMaRolleValue(p: GroupMember): string | null { return p.fields?.find(f => f.name === 'MA-Rolle')?.value ? String(p.fields.find(f => f.name === 'MA-Rolle')!.value) : null; }
+
   readonly availableMaRollen = computed(() => {
     const rollen = new Set<string>();
     this.$anmeldungen().forEach(p => { const r = this.getMaRolleValue(p); if (r) rollen.add(r); });
@@ -476,6 +454,6 @@ export class StammesEinteilungComponent {
     const val = (event.target as HTMLSelectElement).value;
     this.activeFilter.set(val && val !== 'all' ? JSON.parse(val) : { type: 'all', value: null });
   }
-  private showErrorModal(msg: string) { this.modalService.show(ConfirmModalComponent, { initialState: { title: 'Fehler', message: msg, cancelText: '', confirmText: 'Ok' }}); }
-  private showInfoModal(msg: string) { this.modalService.show(ConfirmModalComponent, { initialState: { title: 'Info', message: msg, cancelText: '', confirmText: 'Ok' }}); }
+  private showErrorModal(msg: string) { this.modalService.show(ConfirmModalComponent, { initialState: { title: 'Fehler', message: msg, cancelText: '', confirmText: 'Ok' } }); }
+  private showInfoModal(msg: string) { this.modalService.show(ConfirmModalComponent, { initialState: { title: 'Info', message: msg, cancelText: '', confirmText: 'Ok' } }); }
 }

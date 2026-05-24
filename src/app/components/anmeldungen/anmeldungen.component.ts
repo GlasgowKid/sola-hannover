@@ -1,5 +1,5 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { Component, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
 import { parseISO, startOfYear } from 'date-fns';
@@ -35,8 +35,8 @@ export class AnmeldungenComponent {
   private readonly churchToolsService = inject(ChurchtoolsService);
   private readonly modalService = inject(BsModalService);
 
-  @ViewChild('sofa') sofa?: SofaAnmeldungenComponent;
-  @ViewChild('solaTeilnehmer') solaTeilnehmer?: SolaTeilnehmerAnmeldungenComponent;
+  readonly sofa = viewChild<SofaAnmeldungenComponent>('sofa');
+  readonly solaTeilnehmer = viewChild<SolaTeilnehmerAnmeldungenComponent>('solaTeilnehmer');
 
   readonly $jahre = toSignal(this.churchToolsService.getJahre());
   readonly $selectedWeek = signal<number | null>(null);
@@ -123,8 +123,8 @@ export class AnmeldungenComponent {
   }
 
   canDeactivate(): boolean {
-    const sofaDirty = this.sofa ? this.sofa.$unsavedPayloads().length > 0 : false;
-    const solaDirty = this.solaTeilnehmer ? this.solaTeilnehmer.$unsavedPayloads().length > 0 : false;
+    const sofaDirty = this.sofa() ? this.sofa()!.$unsavedPayloads().length > 0 : false;
+    const solaDirty = this.solaTeilnehmer() ? this.solaTeilnehmer()!.$unsavedPayloads().length > 0 : false;
     return !(sofaDirty || solaDirty);
   }
 

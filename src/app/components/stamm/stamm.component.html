@@ -1,0 +1,73 @@
+<div class="card shadow-sm h-100 border-primary">
+  <div
+    class="card-header bg-primary text-white p-2 d-flex justify-content-between align-items-center small"
+  >
+    <div class="text-truncate fw-semibold">Stamm {{ stammIdx() + 1 }}</div>
+    <span class="badge bg-light text-dark ms-2 flex-shrink-0">
+      <span class="text-primary">{{ boysCount() }}</span> /
+      <span class="text-danger">{{ girlsCount() }}</span>
+    </span>
+  </div>
+  <div class="p-1 bg-light border-bottom small text-center text-muted">
+    Ø Alter: {{ averageAge() }} | Varianz: {{ ageVariance() }}
+  </div>
+
+  <div
+    class="card-body p-2 group-body"
+    [class.drag-over]="dragOverZone() === 'stamm-' + stammIdx()"
+    [attr.data-id]="stammIdx()"
+    (dragover)="dragOverNode.emit($event)"
+    (dragleave)="dragLeaveNode.emit($event)"
+    (drop)="dropNode.emit($event)"
+  >
+    @for (item of group(); track getItemId(item)) {
+      @if (isGroupWrapper(item)) {
+        <div
+          class="card shadow-sm group-wrapper-card d-flex flex-column mb-1 cursor-grab"
+          draggable="true"
+          (dragstart)="
+            dragStartItem.emit({
+              event: $event,
+              payload: { type: 'GROUP', sourceZone: 'stamm-' + stammIdx(), data: item },
+            })
+          "
+        >
+          <div class="text-center text-muted small bg-light border-bottom" style="opacity: 0.5">
+            <i class="bi bi-grid-3x3-gap-fill"></i>
+          </div>
+          <div class="card-body p-1 bg-white">
+            @for (p of item.participants; track p.id) {
+              <app-participant-card
+                [item]="p"
+                [sourceZone]="'stamm-' + stammIdx()"
+                [showIds]="showIds()"
+                (dragStartNode)="
+                  dragStartItem.emit({
+                    event: $event,
+                    payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: p },
+                  })
+                "
+                (resetNode)="resetItem.emit(p)"
+              >
+              </app-participant-card>
+            }
+          </div>
+        </div>
+      } @else {
+        <app-participant-card
+          [item]="item"
+          [sourceZone]="'stamm-' + stammIdx()"
+          [showIds]="showIds()"
+          (dragStartNode)="
+            dragStartItem.emit({
+              event: $event,
+              payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: item },
+            })
+          "
+          (resetNode)="resetItem.emit(item)"
+        >
+        </app-participant-card>
+      }
+    }
+  </div>
+</div>

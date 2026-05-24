@@ -1,0 +1,65 @@
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { isValid, parseISO } from 'date-fns';
+import { GroupMember } from '../../../utils/ct-types';
+import { ParticipantCardComponent } from '../participant-card/participant-card.component';
+import { DragPayload, GroupWrapper, StammItem } from '../stammes-einteilung/stammes-einteilung.component';
+
+@Component({
+  selector: 'app-stamm',
+  standalone: true,
+  imports: [ParticipantCardComponent],
+  templateUrl: './stamm.component.html',
+  styleUrl: './stamm.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class StammComponent {
+  stammIdx = input.required<number>();
+  group = input.required<StammItem[]>();
+  dragOverZone = input<string | null>(null);
+  showIds = input<boolean>(false);
+
+  flatParticipants = computed(() => {
+    const flat: GroupMember[] = [];
+    this.group().forEach(item => {
+      if (this.isGroupWrapper(item)) flat.push(...item.participants);
+      else flat.push(item);
+    });
+    return flat;
+  });
+
+  boysCount = computed(() => this.flatParticipants().filter(m => m.personFields?.sexId === 1).length);
+  girlsCount = computed(() => this.flatParticipants().filter(m => m.personFields?.sexId === 2).length);
+
+  validAges = computed(() => {
+    return this.flatParticipants()
+      .map(m => {
+        const birthday = m.personFields?.birthday;
+        if (!birthday) return null;
+        const bd = parseISO(String(birthday));
+        return isValid(bd) ? new Date().getFullYear() - bd.getFullYear() : null;
+      })
+      .filter((a): a is number => a !== null && a > 0);
+  });
+
+  averageAge = computed(() => {
+    const ages = this.validAges();
+    return ages.length ? Math.round(10 * ages.reduce((a, b) => a + b, 0) / ages.length) / 10 : 0;
+  });
+
+  ageVariance = computed(() => {
+    const ages = this.validAges();
+    if (ages.length <= 1) return 0;
+    const mean = ages.reduce((a, b) => a + b, 0) / ages.length;
+    return Math.round((ages.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / ages.length) * 10) / 10;
+  });
+
+  dragOverNode = output<DragEvent>();
+  dragLeaveNode = output<DragEvent>();
+  dropNode = output<DragEvent>();
+  dragStartItem = output<{ event: DragEvent, payload: DragPayload }>();
+  resetItem = output<GroupMember>();
+
+  isGroupWrapper(item: any): item is GroupWrapper { return item && item.isWrapper === true; }
+
+  getItemId(item: StammItem): string | number { return this.isGroupWrapper(item) ? item.id : item.id; }
+}
