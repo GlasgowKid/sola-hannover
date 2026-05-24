@@ -19,6 +19,7 @@ export class PoolToolbarComponent {
   details = input<boolean>(false);
   progress = input<number>(0);
   isDirty = input<boolean>(false);
+  isDragging = input<boolean>(false);
 
   toggleIds = output<void>();
   toggleDetails = output<void>();

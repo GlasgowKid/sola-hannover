@@ -288,6 +288,20 @@ describe('StammesEinteilungComponent', () => {
       expect(spectator.component.$anmeldungen()[0].id).toBe(3);
     });
 
+    it('sollte isDragging bei onDragStart aus main setzen und bei onDragEnd zurücksetzen', () => {
+      const ev = new Event('dragstart') as DragEvent;
+      spectator.component.onDragStart(ev, { type: 'PARTICIPANT', sourceZone: 'main', data: spectator.component.$anmeldungen()[0] });
+      expect(spectator.component.isDragging()).toBe(true);
+      spectator.component.onDragEnd();
+      expect(spectator.component.isDragging()).toBe(false);
+    });
+
+    it('sollte isDragging NICHT setzen, wenn der Drag in einem Pool startet', () => {
+      const ev = new Event('dragstart') as DragEvent;
+      spectator.component.onDragStart(ev, { type: 'PARTICIPANT', sourceZone: 'pool-0', data: spectator.component.$anmeldungen()[0] });
+      expect(spectator.component.isDragging()).toBe(false);
+    });
+
     describe('Neues Feature: Ganzen Stamm verschieben', () => {
       beforeEach(() => {
         const p1 = spectator.component.$anmeldungen()[0]; // B.X

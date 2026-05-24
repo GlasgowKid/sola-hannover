@@ -2,8 +2,8 @@
   min-height: 120px;
 }
 .main-pool {
-  max-height: 600px;
   overflow-y: auto;
+  min-height: 0;
 }
 .drag-over {
   background-color: var(--bs-primary-bg-subtle) !important;

@@ -1,4 +1,4 @@
-<div class="card shadow-sm">
+<div class="card shadow-sm h-100 d-flex flex-column">
   <div
     class="card-header bg-secondary text-white d-flex justify-content-between align-items-center py-2"
   >
@@ -27,7 +27,7 @@
       </div>
     </div>
     <div
-      class="card-body p-2 group-body bg-light main-pool"
+      class="card-body p-2 group-body bg-light main-pool flex-grow-1"
       [class.drag-over]="dragOverZone() === 'main'"
       (dragover)="dragOverNode.emit($event)"
       (dragleave)="dragLeaveNode.emit($event)"

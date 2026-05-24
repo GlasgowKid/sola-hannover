@@ -173,11 +173,19 @@ export class StammesEinteilungComponent {
   // ==========================================
   draggedPayload: DragPayload | null = null;
   dragOverZone = signal<string | null>(null);
+  isDragging = signal<boolean>(false);
 
   onDragStart(event: DragEvent, payload: DragPayload) {
     this.draggedPayload = payload;
+    this.isDragging.set(!payload.sourceZone.startsWith('pool-'));
     event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+
+  onDragEnd() {
+    this.draggedPayload = null;
+    this.isDragging.set(false);
+    this.dragOverZone.set(null);
   }
 
   allowDrop(event: DragEvent, zoneId: string) {
@@ -201,6 +209,7 @@ export class StammesEinteilungComponent {
     event.preventDefault();
     event.stopPropagation();
     this.dragOverZone.set(null);
+    this.isDragging.set(false);
 
     // Extrahieren der Teilnehmer
     let extracted: GroupMember[] = [];

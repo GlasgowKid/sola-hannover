@@ -5,22 +5,25 @@
   (weekSelected)="onWeekSelected($event)"
 ></app-sola-selector>
 
-<div class="container-fluid px-0 d-flex flex-column gap-3 mt-3">
-  <div class="row g-3 align-items-start">
+<div class="container-fluid px-0 d-flex flex-column gap-3 mt-3 flex-grow-1" (dragend)="onDragEnd()">
+  <div class="row g-3 align-items-stretch flex-grow-1">
     <!-- Linke Spalte: Alle Teilnehmer (MAIN) -->
-    <div class="col-xl-2 col-lg-3 col-md-4">
-      <app-participant-list
-        [participants]="filteredParticipants()"
-        [dragOverZone]="dragOverZone()"
-        [showIds]="showIds()"
-        [hasAnmeldungen]="$anmeldungen().length > 0"
-        (filterChange)="onFilterChange($event)"
-        (searchChange)="updateSearch($event)"
-        (dragOverNode)="allowDrop($event, 'main')"
-        (dragLeaveNode)="onDragLeave($event, 'main')"
-        (dropNode)="onDrop($event, 'main')"
-        (dragStartItem)="onDragStart($event.event, $event.payload)"
-      ></app-participant-list>
+    <div class="col-xl-2 col-lg-3 col-md-4 d-flex flex-column">
+      <div class="flex-grow-1" style="height: 0;">
+        <app-participant-list
+          class="d-block h-100"
+          [participants]="filteredParticipants()"
+          [dragOverZone]="dragOverZone()"
+          [showIds]="showIds()"
+          [hasAnmeldungen]="$anmeldungen().length > 0"
+          (filterChange)="onFilterChange($event)"
+          (searchChange)="updateSearch($event)"
+          (dragOverNode)="allowDrop($event, 'main')"
+          (dragLeaveNode)="onDragLeave($event, 'main')"
+          (dropNode)="onDrop($event, 'main')"
+          (dragStartItem)="onDragStart($event.event, $event.payload)"
+        ></app-participant-list>
+      </div>
     </div>
 
     <!-- Rechte Spalte: 8 Stämme -->
@@ -53,6 +56,7 @@
       [details]="details()"
       [progress]="$progress()"
       [isDirty]="isDirty()"
+      [isDragging]="isDragging()"
       (toggleIds)="toggleIds()"
       (toggleDetails)="toggleDetails()"
       (confirmLoadServer)="confirmLoadServer()"

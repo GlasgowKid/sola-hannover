@@ -16,7 +16,8 @@ describe('PoolToolbarComponent', () => {
       props: {
         pools: [{ id: 'pool-0', isWrapper: true, participants: [] } as any],
         isDirty: false,
-        progress: 0
+        progress: 0,
+        isDragging: false
       }
     });
   });
@@ -73,5 +74,10 @@ describe('PoolToolbarComponent', () => {
 
     spectator.dispatchFakeEvent('.group-wrapper-card', 'dragstart');
     expect(dragStartEmitted.payload.type).toBe('POOL');
+  });
+
+  it('sollte z-index und CSS Klasse anpassen, wenn isDragging true ist', () => {
+    spectator.setInput('isDragging', true);
+    expect(spectator.query('.navbar')).toHaveClass('is-dragging-nav');
   });
 });
