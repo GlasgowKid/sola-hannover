@@ -280,14 +280,17 @@ describe('StammesEinteilungComponent', () => {
       expect(variance).toBe(4); // ((10-12)^2 + (14-12)^2) / 2 = (4 + 4) / 2 = 4
     });
 
-    it('loadGroupsServer ordnet Teilnehmer korrekt aus ChurchTools in Stämme und Main ein', () => {
+    it('loadGroupsServer ordnet Teilnehmer korrekt aus ChurchTools in Stämme und Main ein', async () => {
       // Setup mock data from server
       const p1 = { id: 1, fields: [{ name: 'Stammeszugehörigkeit', value: 'Stamm 1' }], person: { domainAttributes: { firstName: 'A', lastName: 'A' } } } as any;
       const p2 = { id: 2, fields: [{ name: 'Gruppenzugehörigkeit', value: 'Stamm 8' }], person: { domainAttributes: { firstName: 'B', lastName: 'B' } } } as any;
       const p3 = { id: 3, fields: [{ name: 'Stammeszugehörigkeit', value: null }], person: { domainAttributes: { firstName: 'C', lastName: 'C' } } } as any;
 
-      spectator.component.$anmeldungen.set([p1, p2, p3]);
-      spectator.component.loadGroupsServer();
+      // Simulieren, dass eine Woche ausgewählt ist und der Service die Daten zurückgibt
+      spectator.component.selectedWeek.set(123);
+      jest.spyOn((spectator.component as any).churchToolsService, 'getTeilnehmer').mockReturnValue(of([p1, p2, p3]));
+
+      await spectator.component.loadGroupsServer();
 
       expect(spectator.component.$staemme()[0].length).toBe(1); // Stamm 1
       expect(spectator.component.$staemme()[0][0].id).toBe(1);
