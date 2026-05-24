@@ -21,7 +21,7 @@ export interface GroupWrapper {
 export type StammItem = GroupMember | GroupWrapper;
 
 export interface DragPayload {
-  type: 'PARTICIPANT' | 'GROUP' | 'POOL';
+  type: 'PARTICIPANT' | 'GROUP' | 'POOL' | 'STAMM';
   sourceZone: string;
   data: any;
 }
@@ -204,9 +204,15 @@ export class StammesEinteilungComponent {
 
     // Extrahieren der Teilnehmer
     let extracted: GroupMember[] = [];
+    let stammItemsToMove: StammItem[] = [];
+
     if (payload?.type === 'PARTICIPANT') extracted = [payload.data];
     else if (payload?.type === 'GROUP') extracted = [...payload.data.participants];
     else if (payload?.type === 'POOL') extracted = [...payload.data];
+    else if (payload?.type === 'STAMM') {
+      stammItemsToMove = payload.data;
+      extracted = this.expandParticipants(stammItemsToMove);
+    }
 
     if (extracted.length === 0) return;
 
@@ -235,17 +241,19 @@ export class StammesEinteilungComponent {
       const stammIdx = parseInt(targetZone.split('-')[1], 10);
       const stamm = staemme[stammIdx];
 
-      // Einzufügendes Element bestimmen (Pool wird zu Group)
-      let itemToInsert: StammItem;
-      if (extracted.length === 1) {
-        itemToInsert = extracted[0];
+      if (payload?.type === 'STAMM') {
+        stamm.push(...stammItemsToMove);
       } else {
-        const newId = payload?.type === 'GROUP' ? payload?.data.id : `wrapper-${Date.now()}`;
-        itemToInsert = { id: newId, isWrapper: true, participants: extracted };
+        // Einzufügendes Element bestimmen (Pool wird zu Group)
+        let itemToInsert: StammItem;
+        if (extracted.length === 1) {
+          itemToInsert = extracted[0];
+        } else {
+          const newId = payload?.type === 'GROUP' ? payload?.data.id : `wrapper-${Date.now()}`;
+          itemToInsert = { id: newId, isWrapper: true, participants: extracted };
+        }
+        stamm.push(itemToInsert);
       }
-
-      // Sortierung anwenden
-      stamm.push(itemToInsert);
     }
 
     // 3. 1-Element-Gruppen in Stämmen auflösen

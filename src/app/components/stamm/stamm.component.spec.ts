@@ -59,6 +59,25 @@ describe('StammComponent', () => {
     expect(emittedPayload.payload.sourceZone).toBe('stamm-0');
   });
 
+  it('sollte dragstart für den gesamten Stamm (Header) emitten, wenn nicht leer', () => {
+    let emittedPayload: any;
+    spectator.component.dragStartItem.subscribe(p => (emittedPayload = p));
+
+    const header = spectator.query('.card-header');
+    expect(header).toHaveClass('cursor-grab');
+    spectator.dispatchFakeEvent(header as Element, 'dragstart');
+    expect(emittedPayload.payload.type).toBe('STAMM');
+    expect(emittedPayload.payload.sourceZone).toBe('stamm-0');
+    expect(emittedPayload.payload.data).toEqual(spectator.component.group());
+  });
+
+  it('sollte den Header nicht draggable machen, wenn der Stamm leer ist', () => {
+    spectator.setInput('group', []);
+    const header = spectator.query('.card-header');
+    expect(header).not.toHaveClass('cursor-grab');
+    expect(header?.getAttribute('draggable')).toBeNull();
+  });
+
   it('sollte resetItem-Event der Kindkarten weiterleiten', () => {
     let emittedMember: GroupMember | undefined;
     spectator.component.resetItem.subscribe(m => (emittedMember = m));

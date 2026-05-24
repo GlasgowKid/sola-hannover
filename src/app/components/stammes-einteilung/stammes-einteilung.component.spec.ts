@@ -287,5 +287,55 @@ describe('StammesEinteilungComponent', () => {
       expect(spectator.component.$anmeldungen().length).toBe(1); // Main
       expect(spectator.component.$anmeldungen()[0].id).toBe(3);
     });
+
+    describe('Neues Feature: Ganzen Stamm verschieben', () => {
+      beforeEach(() => {
+        const p1 = spectator.component.$anmeldungen()[0]; // B.X
+        const p2 = spectator.component.$anmeldungen()[1]; // A.A
+        const p3 = spectator.component.$anmeldungen()[2]; // C.Z
+        
+        spectator.component.$anmeldungen.set([]);
+        const testGroup = { id: 'group1', isWrapper: true, participants: [p1, p2] };
+        // Wir haben in Stamm 0 eine Gruppe und einen Einzelteilnehmer
+        spectator.component.$staemme.set([ [testGroup as any, p3], [], [], [], [], [], [], [] ]);
+      });
+
+      it('sollte einen ganzen Stamm in die Teilnehmerliste verschieben und Gruppen auflösen', () => {
+        const ev = new Event('drop') as DragEvent; ev.preventDefault = jest.fn(); ev.stopPropagation = jest.fn();
+        spectator.component.draggedPayload = { type: 'STAMM', sourceZone: 'stamm-0', data: spectator.component.$staemme()[0] };
+        
+        spectator.component.onDrop(ev, 'main');
+        
+        expect(spectator.component.$staemme()[0].length).toBe(0);
+        expect(spectator.component.$anmeldungen().length).toBe(3);
+        // Alphabetische Sortierung muss nach dem Entpacken greifen! (A, X, Z)
+        expect(spectator.component.$anmeldungen()[0].person.domainAttributes.lastName).toBe('A');
+        expect(spectator.component.$anmeldungen()[1].person.domainAttributes.lastName).toBe('X');
+      });
+
+      it('sollte einen ganzen Stamm in einen Poolbereich verschieben und Gruppen auflösen', () => {
+        const ev = new Event('drop') as DragEvent; ev.preventDefault = jest.fn(); ev.stopPropagation = jest.fn();
+        spectator.component.draggedPayload = { type: 'STAMM', sourceZone: 'stamm-0', data: spectator.component.$staemme()[0] };
+        
+        spectator.component.onDrop(ev, 'pool-1');
+        
+        expect(spectator.component.$staemme()[0].length).toBe(0);
+        expect(spectator.component.$pools()[1].participants.length).toBe(3);
+        // Wrapper müssen aufgelöst worden sein
+        expect((spectator.component.$pools()[1].participants[0] as any).isWrapper).toBeFalsy();
+      });
+
+      it('sollte einen ganzen Stamm in einen anderen Stamm verschieben und Gruppen beibehalten', () => {
+        const ev = new Event('drop') as DragEvent; ev.preventDefault = jest.fn(); ev.stopPropagation = jest.fn();
+        spectator.component.draggedPayload = { type: 'STAMM', sourceZone: 'stamm-0', data: spectator.component.$staemme()[0] };
+        
+        spectator.component.onDrop(ev, 'stamm-2');
+        
+        expect(spectator.component.$staemme()[0].length).toBe(0);
+        expect(spectator.component.$staemme()[2].length).toBe(2); // Gruppe + Einzelteilnehmer
+        expect((spectator.component.$staemme()[2][0] as any).isWrapper).toBe(true);
+        expect(spectator.component.$staemme()[2][1].id).toBe(3);
+      });
+    });
   });
 });
