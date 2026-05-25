@@ -128,4 +128,58 @@ describe('ParticipantCardComponent', () => {
     expect(w1).toHaveText('W1: Anna Müller');
     expect(w1).toHaveClass('text-success');
   });
+
+  describe('Wunsch-Ampel', () => {
+    const pUrl1 = 'https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%2311';
+    const pUrl2 = 'https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%2322';
+    const allParticipantsMock = [
+      { id: 11, person: { frontendUrl: pUrl1, domainAttributes: { firstName: 'Person', lastName: 'A' } } },
+      { id: 22, person: { frontendUrl: pUrl2, domainAttributes: { firstName: 'Person', lastName: 'B' } } }
+    ] as any;
+
+    beforeEach(() => {
+      spectator.setInput('sourceZone', 'stamm-0');
+      spectator.setInput('allParticipants', allParticipantsMock);
+    });
+
+    it('sollte keine Ampel in der Main-Zone anzeigen', () => {
+      spectator.setInput('sourceZone', 'main');
+      spectator.setInput('item', getMockMember(1, undefined, [{ name: 'Wunsch 1', value: pUrl1 }]));
+      expect(spectator.query('.rounded-circle')).not.toExist();
+    });
+
+    it('sollte grüne Ampel zeigen, wenn alle zugeordneten Wünsche in der gleichen Zone sind', () => {
+      spectator.setInput('item', getMockMember(1, undefined, [{ name: 'Wunsch 1', value: pUrl1 }]));
+      spectator.setInput('currentZoneParticipants', [{ id: 11 }] as any);
+      expect(spectator.query('.rounded-circle')).toHaveClass('bg-success');
+      expect(spectator.query('.rounded-circle')).toHaveAttribute('title', 'alle Wünsche erfüllt');
+    });
+
+    it('sollte rote Ampel zeigen, wenn kein zugeordneter Wunsch in der Zone ist', () => {
+      spectator.setInput('item', getMockMember(1, undefined, [{ name: 'Wunsch 1', value: pUrl1 }]));
+      spectator.setInput('currentZoneParticipants', [{ id: 99 }] as any); // Person 11 ist nicht da
+      expect(spectator.query('.rounded-circle')).toHaveClass('bg-danger');
+      expect(spectator.query('.rounded-circle')).toHaveAttribute('title', 'kein zugeordneter Wunsch erfüllt');
+    });
+
+    it('sollte gelbe Ampel zeigen, wenn von zwei zugeordneten Wünschen nur einer in der Zone ist', () => {
+      spectator.setInput('item', getMockMember(1, undefined, [
+        { name: 'Wunsch 1', value: pUrl1 },
+        { name: 'Wunsch 2', value: pUrl2 }
+      ]));
+      spectator.setInput('currentZoneParticipants', [{ id: 11 }] as any); // Person 11 da, Person 22 fehlt
+      expect(spectator.query('.rounded-circle')).toHaveClass('bg-warning');
+      expect(spectator.query('.rounded-circle')).toHaveAttribute('title', 'zugeordnete Wünsche teilweise erfüllt');
+    });
+
+    it('sollte blaue Ampel zeigen, wenn alle zugeordneten Wünsche in der Zone sind, es aber ignorierte Wünsche gibt', () => {
+      spectator.setInput('item', getMockMember(1, undefined, [
+        { name: 'Wunsch 1', value: pUrl1 },
+        { name: 'Wunsch 2', value: 'Anna (ignoriert)' }
+      ]));
+      spectator.setInput('currentZoneParticipants', [{ id: 11 }] as any);
+      expect(spectator.query('.rounded-circle')).toHaveClass('bg-primary');
+      expect(spectator.query('.rounded-circle')).toHaveAttribute('title', 'alle zugeordneten Wünsche erfüllt');
+    });
+  });
 });

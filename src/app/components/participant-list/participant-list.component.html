@@ -47,6 +47,7 @@
           [showIds]="showIds()"
           [details]="details()"
           [allParticipants]="allParticipants()"
+          [currentZoneParticipants]="participants()"
           (dragStartNode)="
             dragStartItem.emit({
               event: $event,

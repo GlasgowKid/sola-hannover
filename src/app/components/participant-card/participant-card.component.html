@@ -23,13 +23,18 @@
       }
     </div>
     @if (sourceZone() !== 'main') {
-      <button
-        type="button"
-        class="btn-close btn-close-sm ms-2 flex-shrink-0 mt-1"
-        aria-label="Close"
-        (click)="onReset($event)"
-        title="Zurücksetzen"
-      ></button>
+      <div class="d-flex align-items-center ms-2 flex-shrink-0 mt-1">
+        @if (wunschAmpel(); as ampel) {
+          <div class="rounded-circle bg-{{ ampel.color }} me-2" style="width: 10px; height: 10px;" [title]="ampel.tooltip"></div>
+        }
+        <button
+          type="button"
+          class="btn-close btn-close-sm"
+          aria-label="Close"
+          (click)="onReset($event)"
+          title="Zurücksetzen"
+        ></button>
+      </div>
     }
   </div>
 

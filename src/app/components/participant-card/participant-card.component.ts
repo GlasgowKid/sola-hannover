@@ -6,6 +6,7 @@ import { GroupMember } from '../../../utils/ct-types';
 export interface WunschAnzeige {
   text: string;
   status: 'open' | 'ignored' | 'confirmed';
+  matchedPersonId?: number;
 }
 
 @Component({
@@ -22,6 +23,7 @@ export class ParticipantCardComponent {
   showIds = input<boolean>(false);
   details = input<boolean>(false);
   allParticipants = input<GroupMember[]>([]);
+  currentZoneParticipants = input<GroupMember[]>([]);
 
   dragStartNode = output<DragEvent>();
   resetNode = output<void>();
@@ -35,6 +37,38 @@ export class ParticipantCardComponent {
 
   wunsch1 = computed(() => this.getWunschText('Wunsch 1'));
   wunsch2 = computed(() => this.getWunschText('Wunsch 2'));
+
+  wunschAmpel = computed<{ color: string; tooltip: string } | null>(() => {
+    if (this.sourceZone() === 'main') return null;
+
+    const w1 = this.wunsch1();
+    const w2 = this.wunsch2();
+    const wishes = [w1, w2].filter((w): w is WunschAnzeige => w !== null);
+
+    const confirmedWishes = wishes.filter(w => w.status === 'confirmed');
+    const ignoredWishes = wishes.filter(w => w.status === 'ignored');
+
+    if (confirmedWishes.length === 0) return null; // Keine zugeordneten Wünsche = Keine Ampel
+
+    const currentZoneIds = new Set(this.currentZoneParticipants().map(p => p.id));
+    let fulfilledCount = 0;
+
+    confirmedWishes.forEach(w => {
+      if (w.matchedPersonId !== undefined && currentZoneIds.has(w.matchedPersonId)) {
+        fulfilledCount++;
+      }
+    });
+
+    if (fulfilledCount === 0) return { color: 'danger', tooltip: 'kein zugeordneter Wunsch erfüllt' }; // Rot
+    if (confirmedWishes.length === 2 && fulfilledCount === 1) return { color: 'warning', tooltip: 'zugeordnete Wünsche teilweise erfüllt' }; // Gelb
+    if (fulfilledCount === confirmedWishes.length) {
+      return ignoredWishes.length > 0 
+        ? { color: 'primary', tooltip: 'alle zugeordneten Wünsche erfüllt' } 
+        : { color: 'success', tooltip: 'alle Wünsche erfüllt' }; // Blau oder Grün
+    }
+
+    return null;
+  });
 
   private getWunschText(fieldName: string): WunschAnzeige | null {
     const field = this.item().fields?.find(f => f.name === fieldName);
@@ -50,7 +84,8 @@ export class ParticipantCardComponent {
       if (matched) {
         return { 
           text: `${matched.person.domainAttributes.firstName} ${matched.person.domainAttributes.lastName}`.trim(), 
-          status: 'confirmed' 
+          status: 'confirmed',
+          matchedPersonId: matched.id
         };
       }
       return { text: 'Unbekannter Link', status: 'confirmed' };

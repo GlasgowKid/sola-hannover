@@ -53,6 +53,7 @@
                 [showIds]="showIds()"
                 [details]="details()"
                 [allParticipants]="allParticipants()"
+                [currentZoneParticipants]="flatParticipants()"
                 (dragStartNode)="
                   dragStartItem.emit({
                     event: $event,
@@ -72,6 +73,7 @@
           [showIds]="showIds()"
           [details]="details()"
           [allParticipants]="allParticipants()"
+          [currentZoneParticipants]="flatParticipants()"
           (dragStartNode)="
             dragStartItem.emit({
               event: $event,
