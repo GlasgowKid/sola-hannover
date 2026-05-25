@@ -16,6 +16,8 @@ export class ParticipantListComponent {
   dragOverZone = input<string | null>(null);
   showIds = input<boolean>(false);
   hasAnmeldungen = input<boolean>(false);
+  details = input<boolean>(false);
+  allParticipants = input<GroupMember[]>([]);
 
   filterChange = output<Event>();
   sortChange = output<Event>();

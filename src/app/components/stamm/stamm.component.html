@@ -51,6 +51,8 @@
                 [item]="p"
                 [sourceZone]="'stamm-' + stammIdx()"
                 [showIds]="showIds()"
+                [details]="details()"
+                [allParticipants]="allParticipants()"
                 (dragStartNode)="
                   dragStartItem.emit({
                     event: $event,
@@ -68,6 +70,8 @@
           [item]="item"
           [sourceZone]="'stamm-' + stammIdx()"
           [showIds]="showIds()"
+          [details]="details()"
+          [allParticipants]="allParticipants()"
           (dragStartNode)="
             dragStartItem.emit({
               event: $event,

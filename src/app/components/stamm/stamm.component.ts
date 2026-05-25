@@ -17,6 +17,8 @@ export class StammComponent {
   group = input.required<StammItem[]>();
   dragOverZone = input<string | null>(null);
   showIds = input<boolean>(false);
+  details = input<boolean>(false);
+  allParticipants = input<GroupMember[]>([]);
 
   flatParticipants = computed(() => {
     const flat: GroupMember[] = [];

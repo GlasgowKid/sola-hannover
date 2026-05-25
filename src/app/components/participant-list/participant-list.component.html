@@ -45,6 +45,8 @@
           [item]="item"
           sourceZone="main"
           [showIds]="showIds()"
+          [details]="details()"
+          [allParticipants]="allParticipants()"
           (dragStartNode)="
             dragStartItem.emit({
               event: $event,

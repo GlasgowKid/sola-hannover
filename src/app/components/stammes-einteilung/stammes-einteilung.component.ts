@@ -78,6 +78,14 @@ export class StammesEinteilungComponent {
     { id: 'pool-2', isWrapper: true, participants: [] }
   ]);
 
+  readonly allParticipants = computed(() => {
+    const list: GroupMember[] = [];
+    list.push(...this.$anmeldungen());
+    this.$pools().forEach(p => list.push(...p.participants));
+    this.$staemme().forEach(s => list.push(...this.expandParticipants(s)));
+    return list;
+  });
+
   private originalLoadedCount = 0; // Für die Sicherheitsprüfung!
 
   canDeactivate(): boolean {

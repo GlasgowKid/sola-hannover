@@ -44,6 +44,13 @@
               })
             "
           >
+            @if (details()) {
+              <div class="p-1 bg-light border-bottom text-center small text-muted" style="font-size: 0.7rem;">
+                <span class="text-primary">{{ getBoysCount(wrap) }}</span> /
+                <span class="text-danger">{{ getGirlsCount(wrap) }}</span>
+                | Ø: {{ getAverageAge(wrap) }} | Var: {{ getAgeVariance(wrap) }}
+              </div>
+            }
             <div
               class="card-body p-1 flex-grow-1 bg-white wrapper-body"
               [class.drag-over]="dragOverZone() === wrap.id"
@@ -56,6 +63,8 @@
                   [item]="p"
                   [sourceZone]="wrap.id"
                   [showIds]="showIds()"
+                  [details]="details()"
+                  [allParticipants]="allParticipants()"
                   (dragStartNode)="
                     dragStartItem.emit({
                       event: $event,

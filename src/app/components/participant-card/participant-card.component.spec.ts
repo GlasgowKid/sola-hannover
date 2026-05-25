@@ -10,10 +10,11 @@ describe('ParticipantCardComponent', () => {
     shallow: true
   });
 
-  const getMockMember = (sexId?: number, birthday?: string): GroupMember => ({
+  const getMockMember = (sexId?: number, birthday?: string, fields: any[] = []): GroupMember => ({
     id: 123,
-    person: { domainAttributes: { firstName: 'Max', lastName: 'Mustermann' } },
-    personFields: { sexId, birthday }
+    person: { domainAttributes: { firstName: 'Max', lastName: 'Mustermann' }, frontendUrl: 'url123' },
+    personFields: { sexId, birthday, zip: '12345', city: 'Musterstadt' },
+    fields
   } as unknown as GroupMember);
 
   beforeEach(() => {
@@ -88,5 +89,43 @@ describe('ParticipantCardComponent', () => {
     spectator.component.resetNode.subscribe(() => (resetEmitted = true));
     spectator.click('.btn-close');
     expect(resetEmitted).toBe(true);
+  });
+
+  it('sollte Details ein- und ausblenden', () => {
+    spectator.setInput('details', false);
+    expect(spectator.element).not.toHaveText('12345');
+  });
+
+  it('sollte PLZ und Ort anzeigen wenn details true ist', () => {
+    spectator.setInput('details', true);
+    expect(spectator.query('.mt-1.d-flex')).toHaveText('12345 Musterstadt');
+  });
+
+  it('sollte offenen Wunsch anzeigen in rot', () => {
+    spectator.setInput('item', getMockMember(1, undefined, [{ name: 'Wunsch 1', value: 'Anna' }]));
+    spectator.setInput('details', true);
+    const w1 = spectator.queryAll('.text-truncate')[0];
+    expect(w1).toHaveText('W1: Anna');
+    expect(w1).toHaveClass('text-danger');
+  });
+
+  it('sollte ignorierten Wunsch anzeigen in gelb', () => {
+    spectator.setInput('item', getMockMember(1, undefined, [{ name: 'Wunsch 1', value: 'Anna (ignoriert)' }]));
+    spectator.setInput('details', true);
+    const w1 = spectator.queryAll('.text-truncate')[0];
+    expect(w1).toHaveText('W1: Anna');
+    expect(w1).toHaveClass('text-warning-emphasis');
+  });
+
+  it('sollte zugeordneten Wunsch als Namen in grün anzeigen', () => {
+    spectator.setInput('allParticipants', [
+      { person: { frontendUrl: 'https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%2399', domainAttributes: { firstName: 'Anna', lastName: 'Müller' } } } as any
+    ]);
+    spectator.setInput('item', getMockMember(1, undefined, [{ name: 'Wunsch 1', value: 'https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%2399' }]));
+    spectator.setInput('details', true);
+    
+    const w1 = spectator.queryAll('.text-truncate')[0];
+    expect(w1).toHaveText('W1: Anna Müller');
+    expect(w1).toHaveClass('text-success');
   });
 });

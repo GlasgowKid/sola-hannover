@@ -80,4 +80,21 @@ describe('PoolToolbarComponent', () => {
     spectator.setInput('isDragging', true);
     expect(spectator.query('.navbar')).toHaveClass('is-dragging-nav');
   });
+
+  it('sollte Pool Details (Ø Alter, Varianz, Geschlechter) anzeigen, wenn details true ist', () => {
+    spectator.setInput('pools', [
+      { id: 'pool-0', isWrapper: true, participants: [
+        { person: { domainAttributes: { firstName: 'M', lastName: 'J' } }, personFields: { sexId: 1, birthday: '2010-01-01' } },
+        { person: { domainAttributes: { firstName: 'A', lastName: 'M' } }, personFields: { sexId: 2, birthday: '2012-01-01' } }
+      ]} as any
+    ]);
+    spectator.setInput('details', false);
+    expect(spectator.query('.text-primary')).not.toExist();
+
+    spectator.setInput('details', true);
+    expect(spectator.query('.text-primary')).toHaveText('1'); // 1 Junge
+    expect(spectator.query('.text-danger')).toHaveText('1'); // 1 Mädchen
+    expect(spectator.query('.p-1.bg-light.border-bottom.text-center')).toHaveText('Ø:');
+    expect(spectator.query('.p-1.bg-light.border-bottom.text-center')).toHaveText('Var:');
+  });
 });
