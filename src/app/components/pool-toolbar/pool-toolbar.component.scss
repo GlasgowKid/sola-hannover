@@ -21,8 +21,7 @@
 }
 
 .is-dragging-nav {
-  position: fixed !important;
-  top: calc(100vh - 95px) !important;
+  position: absolute !important;
   left: 12px; /* Bootstrap Padding ausgleichen */
   right: 12px;
   z-index: 1050;

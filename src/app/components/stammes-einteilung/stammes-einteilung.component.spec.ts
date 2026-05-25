@@ -328,6 +328,20 @@ describe('StammesEinteilungComponent', () => {
       expect(spectator.component.isDragging()).toBe(false);
     });
 
+    it('sollte is-dragging-container Klasse setzen, wenn isDragging true ist, um Layout-Jumps zu verhindern', () => {
+      const container = spectator.query('.container-fluid');
+      expect(container).not.toHaveClass('is-dragging-container');
+      
+      const ev = new Event('dragstart') as DragEvent;
+      spectator.component.onDragStart(ev, { type: 'PARTICIPANT', sourceZone: 'main', data: spectator.component.$anmeldungen()[0] });
+      spectator.detectChanges();
+      expect(spectator.query('.container-fluid')).toHaveClass('is-dragging-container');
+      
+      spectator.component.onDragEnd();
+      spectator.detectChanges();
+      expect(spectator.query('.container-fluid')).not.toHaveClass('is-dragging-container');
+    });
+
     it('sollte isDragging NICHT setzen, wenn der Drag in einem Pool startet', () => {
       const ev = new Event('dragstart') as DragEvent;
       spectator.component.onDragStart(ev, { type: 'PARTICIPANT', sourceZone: 'pool-0', data: spectator.component.$anmeldungen()[0] });

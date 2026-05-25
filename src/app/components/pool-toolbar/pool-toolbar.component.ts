@@ -1,5 +1,5 @@
 import { PercentPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, HostListener, input, output, signal } from '@angular/core';
 import { isValid, parseISO } from 'date-fns';
 import { GroupMember } from '../../../utils/ct-types';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
@@ -23,6 +23,8 @@ export class PoolToolbarComponent {
   isDragging = input<boolean>(false);
   allParticipants = input<GroupMember[]>([]);
 
+  dragTop = signal<number>(0);
+
   toggleIds = output<void>();
   toggleDetails = output<void>();
   confirmLoadServer = output<void>();
@@ -33,6 +35,22 @@ export class PoolToolbarComponent {
   dropNode = output<{ event: DragEvent, zone: string }>();
   dragStartItem = output<{ event: DragEvent, payload: DragPayload }>();
   resetItem = output<GroupMember>();
+
+  constructor() {
+    effect(() => {
+      if (this.isDragging()) {
+        this.updatePosition();
+      }
+    });
+  }
+
+  @HostListener('window:scroll')
+  @HostListener('window:resize')
+  updatePosition() {
+    if (this.isDragging()) {
+      this.dragTop.set(window.innerHeight - 95 + window.scrollY);
+    }
+  }
 
   getBoysCount(wrap: GroupWrapper) {
     return wrap.participants.filter(m => m.personFields?.sexId === 1).length;

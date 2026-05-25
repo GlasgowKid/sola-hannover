@@ -97,4 +97,23 @@ describe('PoolToolbarComponent', () => {
     expect(spectator.query('.p-1.bg-light.border-bottom.text-center')).toHaveText('Ø:');
     expect(spectator.query('.p-1.bg-light.border-bottom.text-center')).toHaveText('Var:');
   });
+
+  it('sollte den Offset der Scrollbar bei der Toolbar-Positionierung berücksichtigen', () => {
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 200, configurable: true });
+
+    spectator.setInput('isDragging', true);
+    spectator.detectChanges();
+
+    const nav = spectator.query('.navbar') as HTMLElement;
+    expect(spectator.component.dragTop()).toBe(905); // 800 - 95 + 200
+    expect(nav.style.top).toBe('905px');
+
+    Object.defineProperty(window, 'scrollY', { value: 300, configurable: true });
+    window.dispatchEvent(new Event('scroll'));
+    spectator.detectChanges();
+
+    expect(spectator.component.dragTop()).toBe(1005); // 800 - 95 + 300
+    expect(nav.style.top).toBe('1005px');
+  });
 });
