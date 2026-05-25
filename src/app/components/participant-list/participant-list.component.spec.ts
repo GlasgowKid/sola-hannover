@@ -41,16 +41,21 @@ describe('ParticipantListComponent', () => {
     expect(spectator.query('.text-muted.mt-3')).toHaveText('Keine Teilnehmer gefunden.');
   });
 
-  it('sollte Events für Filter und Suche emitten', () => {
+  it('sollte Events für Filter, Sortierung und Suche emitten', () => {
     let filterEvent: Event | undefined;
+    let sortEvent: Event | undefined;
     let searchEvent: Event | undefined;
     spectator.component.filterChange.subscribe(e => (filterEvent = e));
+    spectator.component.sortChange.subscribe(e => (sortEvent = e));
     spectator.component.searchChange.subscribe(e => (searchEvent = e));
 
-    spectator.dispatchFakeEvent('select', 'change');
+    const selects = spectator.queryAll('select');
+    spectator.dispatchFakeEvent(selects[0], 'change');
+    spectator.dispatchFakeEvent(selects[1], 'change');
     spectator.typeInElement('Max', 'input[type="text"]');
 
     expect(filterEvent).toBeTruthy();
+    expect(sortEvent).toBeTruthy();
     expect(searchEvent).toBeTruthy();
   });
 

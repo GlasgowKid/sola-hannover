@@ -2,7 +2,7 @@ import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { of } from 'rxjs';
 import { ChurchtoolsService } from '../../services/churchtools.service';
-import { StammesEinteilungComponent } from './stammes-einteilung.component';
+import { StammesEinteilungComponent, SortOption } from './stammes-einteilung.component';
 
 describe('StammesEinteilungComponent', () => {
   let spectator: Spectator<StammesEinteilungComponent>;
@@ -264,6 +264,38 @@ describe('StammesEinteilungComponent', () => {
       spectator.component.activeFilter.set({ type: 'gender', value: 2 });
       expect(spectator.component.filteredParticipants().length).toBe(1);
       expect(spectator.component.filteredParticipants()[0].id).toBe(2);
+    });
+
+    it('Sort logic (filteredParticipants) sortiert korrekt nach aktiver Sortierung', () => {
+      spectator.component.$anmeldungen.set([
+        { id: 2, person: { birthday: '2010-01-01', domainAttributes: { firstName: 'Max', lastName: 'Mustermann' } } } as any,
+        { id: 1, person: { birthday: '2012-01-01', domainAttributes: { firstName: 'Anna', lastName: 'Schmidt' } } } as any,
+        { id: 3, person: { birthday: '2008-01-01', domainAttributes: { firstName: 'Zeta', lastName: 'Aal' } } } as any,
+      ]);
+
+      spectator.component.activeSort.set(SortOption.LastNameAsc);
+      let result = spectator.component.filteredParticipants();
+      expect(result[0].id).toBe(3);
+      expect(result[1].id).toBe(2);
+      expect(result[2].id).toBe(1);
+
+      spectator.component.activeSort.set(SortOption.FirstNameAsc);
+      result = spectator.component.filteredParticipants();
+      expect(result[0].id).toBe(1);
+      expect(result[1].id).toBe(2);
+      expect(result[2].id).toBe(3);
+
+      spectator.component.activeSort.set(SortOption.AgeAsc);
+      result = spectator.component.filteredParticipants();
+      expect(result[0].id).toBe(1); // 2012
+      expect(result[1].id).toBe(2); // 2010
+      expect(result[2].id).toBe(3); // 2008
+
+      spectator.component.activeSort.set(SortOption.IdDesc);
+      result = spectator.component.filteredParticipants();
+      expect(result[0].id).toBe(3);
+      expect(result[1].id).toBe(2);
+      expect(result[2].id).toBe(1);
     });
 
     it('loadGroupsServer ordnet Teilnehmer korrekt aus ChurchTools in Stämme und Main ein', async () => {

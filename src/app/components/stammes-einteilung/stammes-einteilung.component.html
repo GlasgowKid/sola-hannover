@@ -17,6 +17,7 @@
           [showIds]="showIds()"
           [hasAnmeldungen]="$anmeldungen().length > 0"
           (filterChange)="onFilterChange($event)"
+          (sortChange)="onSortChange($event)"
           (searchChange)="updateSearch($event)"
           (dragOverNode)="allowDrop($event, 'main')"
           (dragLeaveNode)="onDragLeave($event, 'main')"

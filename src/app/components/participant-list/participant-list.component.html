@@ -7,24 +7,31 @@
   </div>
   @if (hasAnmeldungen()) {
     <div class="p-1.5 bg-light border-bottom">
-      <select class="form-select form-select-sm mb-2" (change)="filterChange.emit($event)">
+      <select class="form-select form-select-sm rounded-0" (change)="filterChange.emit($event)">
         <option value='{"type":"all","value":null}'>Kein Filter</option>
         <optgroup label="Geschlecht">
           <option value='{"type":"gender","value":1}'>Jungs</option>
           <option value='{"type":"gender","value":2}'>Mädchen</option>
         </optgroup>
       </select>
-      <div class="input-group input-group-sm">
-        <span class="input-group-text bg-white border-end-0"
-          ><i class="bi bi-search text-muted"></i
-        ></span>
-        <input
-          type="text"
-          class="form-control border-start-0 ps-0"
-          placeholder="Suchen..."
-          (input)="searchChange.emit($event)"
-        />
-      </div>
+      <select class="form-select form-select-sm rounded-0" (change)="sortChange.emit($event)">
+        <option value="lastName_asc" selected>Nachname (A bis Z)</option>
+        <option value="lastName_desc">Nachname (Z bis A)</option>
+        <option value="firstName_asc">Vorname (A bis Z)</option>
+        <option value="firstName_desc">Vorname (Z bis A)</option>
+        <option value="age_asc">Alter (aufsteigend)</option>
+        <option value="age_desc">Alter (absteigend)</option>
+        @if (showIds()) {
+          <option value="id_asc">ID (aufsteigend)</option>
+          <option value="id_desc">ID (absteigend)</option>
+        }
+      </select>
+      <input
+        type="text"
+        class="form-control form-control-sm rounded-0"
+        placeholder="Suchen..."
+        (input)="searchChange.emit($event)"
+      />
     </div>
     <div
       class="card-body p-2 group-body bg-light main-pool flex-grow-1"

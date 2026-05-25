@@ -31,6 +31,17 @@ interface UnifiedFilter {
   value: any;
 }
 
+export enum SortOption {
+  LastNameAsc = 'lastName_asc',
+  LastNameDesc = 'lastName_desc',
+  FirstNameAsc = 'firstName_asc',
+  FirstNameDesc = 'firstName_desc',
+  AgeAsc = 'age_asc',
+  AgeDesc = 'age_desc',
+  IdAsc = 'id_asc',
+  IdDesc = 'id_desc'
+}
+
 @Component({
   selector: 'app-stammeseinteilung',
   standalone: true,
@@ -51,6 +62,12 @@ export class StammesEinteilungComponent {
   private readonly weekSelectedSubject = new Subject<number>();
 
   readonly activeFilter = signal<UnifiedFilter>({ type: 'all', value: null });
+  readonly activeSort = signal<SortOption>(SortOption.LastNameAsc);
+
+  onSortChange(event: Event) {
+    const val = (event.target as HTMLSelectElement).value as SortOption;
+    this.activeSort.set(val);
+  }
 
   // STRIKTE ZONEN
   readonly $anmeldungen = signal<GroupMember[]>([]);
@@ -335,13 +352,43 @@ export class StammesEinteilungComponent {
     return flatList;
   }
 
+  private sortString(a: string, b: string, asc: boolean): number {
+    return asc ? a.localeCompare(b) : b.localeCompare(a);
+  }
+
+  private sortNumber(a: number, b: number, asc: boolean): number {
+    return asc ? a - b : b - a;
+  }
+
+  private sortDate(a: string | null | undefined, b: string | null | undefined, asc: boolean): number {
+    if (!a && !b) return 0;
+    if (!a) return 1;
+    if (!b) return -1;
+
+    const dateA = parseISO(a);
+    const dateB = parseISO(b);
+    const validA = isValid(dateA);
+    const validB = isValid(dateB);
+
+    if (!validA && !validB) return 0;
+    if (!validA) return 1;
+    if (!validB) return -1;
+
+    return asc ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+  }
+
+  private getBirthday(member: GroupMember): string | null {
+    return member.personFields?.birthday ?? (member.person as any).birthday ?? (member.person.domainAttributes as any)?.birthday ?? null;
+  }
+
   searchTerm = signal<string>('');
   filteredParticipants = computed(() => {
     const query = this.searchTerm().toLowerCase().trim();
     const all = this.$anmeldungen();
     const filter = this.activeFilter();
+    const sort = this.activeSort();
 
-    return all.filter(m => {
+    let filtered = all.filter(m => {
       const matchesQuery = !query ||
         m.person.domainAttributes.firstName.toLowerCase().includes(query) ||
         m.person.domainAttributes.lastName.toLowerCase().includes(query);
@@ -352,6 +399,29 @@ export class StammesEinteilungComponent {
       else if (filter.type === 'roleId') matchesDropdown = m.groupTypeRoleId === filter.value;
 
       return matchesQuery && matchesDropdown;
+    });
+
+    return filtered.sort((a, b) => {
+      switch (sort) {
+        case SortOption.FirstNameAsc:
+          return this.sortString(a.person.domainAttributes.firstName, b.person.domainAttributes.firstName, true);
+        case SortOption.FirstNameDesc:
+          return this.sortString(a.person.domainAttributes.firstName, b.person.domainAttributes.firstName, false);
+        case SortOption.LastNameAsc:
+          return this.sortString(`${a.person.domainAttributes.lastName} ${a.person.domainAttributes.firstName}`, `${b.person.domainAttributes.lastName} ${b.person.domainAttributes.firstName}`, true);
+        case SortOption.LastNameDesc:
+          return this.sortString(`${a.person.domainAttributes.lastName} ${a.person.domainAttributes.firstName}`, `${b.person.domainAttributes.lastName} ${b.person.domainAttributes.firstName}`, false);
+        case SortOption.AgeAsc:
+          return this.sortDate(this.getBirthday(a), this.getBirthday(b), false);
+        case SortOption.AgeDesc:
+          return this.sortDate(this.getBirthday(a), this.getBirthday(b), true);
+        case SortOption.IdAsc:
+          return this.sortNumber(a.id, b.id, true);
+        case SortOption.IdDesc:
+          return this.sortNumber(a.id, b.id, false);
+        default:
+          return 0;
+      }
     });
   });
 

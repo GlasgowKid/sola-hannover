@@ -18,6 +18,7 @@ export class ParticipantListComponent {
   hasAnmeldungen = input<boolean>(false);
 
   filterChange = output<Event>();
+  sortChange = output<Event>();
   searchChange = output<Event>();
 
   dragOverNode = output<DragEvent>();
