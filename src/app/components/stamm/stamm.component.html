@@ -44,6 +44,9 @@
         >
           <div class="text-center text-muted small bg-light border-bottom" style="opacity: 0.5">
             <i class="bi bi-grid-3x3-gap-fill"></i>
+            @if (item.name) {
+              <span class="ms-1 fw-bold">{{ item.name }}</span>
+            }
           </div>
           <div class="card-body p-1 bg-white">
             @for (p of item.participants; track p.id) {

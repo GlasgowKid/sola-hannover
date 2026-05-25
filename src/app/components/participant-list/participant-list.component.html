@@ -22,9 +22,16 @@
         @if (availableAges().length > 0) {
           <optgroup label="Alter">
             @for (age of availableAges(); track age) {
-              <option value='{"type":"age","value":{{ age === null ? "null" : age }}}'>
-                @if (age === null) { keine Angabe }
-                @else { {{ age }} Jahre }
+              <option
+                value="{&quot;type&quot;:&quot;age&quot;,&quot;value&quot;:{{
+                  age === null ? 'null' : age
+                }}}"
+              >
+                @if (age === null) {
+                  keine Angabe
+                } @else {
+                  {{ age }} Jahre
+                }
               </option>
             }
           </optgroup>
@@ -42,6 +49,11 @@
           <option value="id_desc">ID (absteigend)</option>
         }
       </select>
+      <select class="form-select form-select-sm rounded-0" (change)="groupingChange.emit($event)">
+        <option value="none" selected>Keine Gruppierung</option>
+        <option value="zip">Nach PLZ gruppiert</option>
+        <option value="city">Nach Ort gruppiert</option>
+      </select>
       <input
         type="text"
         class="form-control form-control-sm rounded-0"
@@ -56,21 +68,59 @@
       (dragleave)="dragLeaveNode.emit($event)"
       (drop)="dropNode.emit($event)"
     >
-      @for (item of participants(); track item.id) {
-        <app-participant-card
-          [item]="item"
-          sourceZone="main"
-          [showIds]="showIds()"
-          [details]="details()"
-          [allParticipants]="allParticipants()"
-          [currentZoneParticipants]="participants()"
-          (dragStartNode)="
-            dragStartItem.emit({
-              event: $event,
-              payload: { type: 'PARTICIPANT', sourceZone: 'main', data: item },
-            })
-          "
-        ></app-participant-card>
+      @for (item of participants(); track getItemId(item)) {
+        @if (isGroupWrapper(item)) {
+          <div
+            class="card shadow-sm group-wrapper-card d-flex flex-column mb-1 cursor-grab"
+            draggable="true"
+            (dragstart)="
+              dragStartItem.emit({
+                event: $event,
+                payload: { type: 'GROUP', sourceZone: 'main', data: item },
+              })
+            "
+          >
+            <div class="text-center text-muted small bg-light border-bottom" style="opacity: 0.5">
+              <i class="bi bi-grid-3x3-gap-fill"></i>
+              @if (item.name) {
+                <span class="ms-1 fw-bold">{{ item.name }}</span>
+              }
+            </div>
+            <div class="card-body p-1 bg-white">
+              @for (p of item.participants; track p.id) {
+                <app-participant-card
+                  [item]="p"
+                  sourceZone="main"
+                  [showIds]="showIds()"
+                  [details]="details()"
+                  [allParticipants]="allParticipants()"
+                  [currentZoneParticipants]="item.participants"
+                  (dragStartNode)="
+                    dragStartItem.emit({
+                      event: $event,
+                      payload: { type: 'PARTICIPANT', sourceZone: 'main', data: p },
+                    })
+                  "
+                ></app-participant-card>
+              }
+            </div>
+          </div>
+        } @else {
+          <app-participant-card
+            [item]="item"
+            sourceZone="main"
+            [showIds]="showIds()"
+            [details]="details()"
+            [allParticipants]="allParticipants()"
+            [currentZoneParticipants]="participantsAsMembers()"
+            (dragStartNode)="
+              dragStartItem.emit({
+                event: $event,
+                payload: { type: 'PARTICIPANT', sourceZone: 'main', data: item },
+              })
+            "
+          ></app-participant-card>
+        }
       } @empty {
         <div class="text-center text-muted mt-3 small">Keine Teilnehmer gefunden.</div>
       }

@@ -4,8 +4,8 @@ import { NgxDatatableModule } from '@siemens/ngx-datatable';
 import { isValid, parseISO } from 'date-fns';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { Subject, distinctUntilChanged, firstValueFrom, of, switchMap, take } from 'rxjs';
-import { GroupMember } from '../../../utils/ct-types';
 import { getMemberAge, getMemberBirthday } from '../../../utils/age.util';
+import { GroupMember } from '../../../utils/ct-types';
 import { getWunschStatus } from '../../../utils/wunsch.util';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
@@ -18,6 +18,13 @@ export interface GroupWrapper {
   id: string;
   isWrapper: true;
   participants: GroupMember[];
+  name?: string;
+}
+
+export enum GroupingOption {
+  None = 'none',
+  Zip = 'zip',
+  City = 'city'
 }
 
 export type StammItem = GroupMember | GroupWrapper;
@@ -69,6 +76,11 @@ export class StammesEinteilungComponent {
   onSortChange(event: Event) {
     const val = (event.target as HTMLSelectElement).value as SortOption;
     this.activeSort.set(val);
+  }
+
+  readonly activeGrouping = signal<GroupingOption>(GroupingOption.None);
+  onGroupingChange(event: Event) {
+    this.activeGrouping.set((event.target as HTMLSelectElement).value as GroupingOption);
   }
 
   // STRIKTE ZONEN
@@ -286,7 +298,8 @@ export class StammesEinteilungComponent {
           itemToInsert = extracted[0];
         } else {
           const newId = payload?.type === 'GROUP' ? payload?.data.id : `wrapper-${Date.now()}`;
-          itemToInsert = { id: newId, isWrapper: true, participants: extracted };
+          const newName = payload?.type === 'GROUP' ? payload?.data.name : undefined;
+          itemToInsert = { id: newId, isWrapper: true, participants: extracted, name: newName };
         }
         stamm.push(itemToInsert);
       }
@@ -393,11 +406,21 @@ export class StammesEinteilungComponent {
     const all = this.$anmeldungen();
     const filter = this.activeFilter();
     const sort = this.activeSort();
+    const grouping = this.activeGrouping();
 
     let filtered = all.filter(m => {
-      const matchesQuery = !query ||
+      let matchesQuery = !query ||
         m.person.domainAttributes.firstName.toLowerCase().includes(query) ||
         m.person.domainAttributes.lastName.toLowerCase().includes(query);
+
+      if (!matchesQuery && query) {
+        if (grouping === GroupingOption.Zip && m.personFields?.zip && String(m.personFields.zip).toLowerCase().includes(query)) {
+          matchesQuery = true;
+        }
+        if (grouping === GroupingOption.City && m.personFields?.city && String(m.personFields.city).toLowerCase().includes(query)) {
+          matchesQuery = true;
+        }
+      }
 
       let matchesDropdown = true;
       if (filter.type === 'gender') matchesDropdown = m.personFields?.sexId === filter.value;
@@ -413,7 +436,7 @@ export class StammesEinteilungComponent {
       return matchesQuery && matchesDropdown;
     });
 
-    return filtered.sort((a, b) => {
+    let sorted = filtered.sort((a, b) => {
       switch (sort) {
         case SortOption.FirstNameAsc:
           return this.sortString(a.person.domainAttributes.firstName, b.person.domainAttributes.firstName, true);
@@ -435,6 +458,42 @@ export class StammesEinteilungComponent {
           return 0;
       }
     });
+
+    if (grouping === GroupingOption.None) {
+      return sorted;
+    }
+
+    const grouped = new Map<string, GroupMember[]>();
+    const withoutGroup: GroupMember[] = [];
+
+    sorted.forEach(m => {
+      let key = null;
+      if (grouping === GroupingOption.Zip) key = m.personFields?.zip;
+      if (grouping === GroupingOption.City) key = m.personFields?.city;
+
+      if (key && String(key).trim()) {
+        const k = String(key).trim();
+        if (!grouped.has(k)) grouped.set(k, []);
+        grouped.get(k)!.push(m);
+      } else {
+        withoutGroup.push(m);
+      }
+    });
+
+    const result: StammItem[] = [];
+    const sortedKeys = Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b));
+    const prefix = grouping === GroupingOption.Zip ? 'PLZ' : (grouping === GroupingOption.City ? 'Ort' : '');
+    sortedKeys.forEach(key => {
+      result.push({
+        id: `wrapper-${grouping}-${key.replace(/\s/g, '')}`,
+        isWrapper: true,
+        participants: grouped.get(key)!,
+        name: `${prefix}: ${key}`
+      });
+    });
+    result.push(...withoutGroup);
+
+    return result;
   });
 
   updateSearch(event: Event) { this.searchTerm.set((event.target as HTMLInputElement).value); }

@@ -1,7 +1,8 @@
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
-import { ParticipantListComponent } from './participant-list.component';
 import { GroupMember } from '../../../utils/ct-types';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
+import { StammItem } from '../stammes-einteilung/stammes-einteilung.component';
+import { ParticipantListComponent } from './participant-list.component';
 
 describe('ParticipantListComponent', () => {
   let spectator: Spectator<ParticipantListComponent>;
@@ -12,9 +13,9 @@ describe('ParticipantListComponent', () => {
     imports: [ParticipantCardComponent]
   });
 
-  const mockParticipants = [
-    { id: 1, person: { domainAttributes: { firstName: 'A', lastName: 'A' } } } as GroupMember,
-    { id: 2, person: { domainAttributes: { firstName: 'B', lastName: 'B' } } } as GroupMember
+  const mockParticipants: StammItem[] = [
+    { id: 1, person: { domainAttributes: { firstName: 'A', lastName: 'A' } } } as unknown as GroupMember,
+    { id: 2, person: { domainAttributes: { firstName: 'B', lastName: 'B' } } } as unknown as GroupMember
   ];
 
   beforeEach(() => {
@@ -41,21 +42,25 @@ describe('ParticipantListComponent', () => {
     expect(spectator.query('.text-muted.mt-3')).toHaveText('Keine Teilnehmer gefunden.');
   });
 
-  it('sollte Events für Filter, Sortierung und Suche emitten', () => {
+  it('sollte Events für Filter, Sortierung, Gruppierung und Suche emitten', () => {
     let filterEvent: Event | undefined;
     let sortEvent: Event | undefined;
+    let groupingEvent: Event | undefined;
     let searchEvent: Event | undefined;
     spectator.component.filterChange.subscribe(e => (filterEvent = e));
     spectator.component.sortChange.subscribe(e => (sortEvent = e));
+    spectator.component.groupingChange.subscribe(e => (groupingEvent = e));
     spectator.component.searchChange.subscribe(e => (searchEvent = e));
 
     const selects = spectator.queryAll('select');
     spectator.dispatchFakeEvent(selects[0], 'change');
     spectator.dispatchFakeEvent(selects[1], 'change');
+    spectator.dispatchFakeEvent(selects[2], 'change');
     spectator.typeInElement('Max', 'input[type="text"]');
 
     expect(filterEvent).toBeTruthy();
     expect(sortEvent).toBeTruthy();
+    expect(groupingEvent).toBeTruthy();
     expect(searchEvent).toBeTruthy();
   });
 

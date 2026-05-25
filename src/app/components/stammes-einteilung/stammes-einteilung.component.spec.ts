@@ -2,7 +2,7 @@ import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { of } from 'rxjs';
 import { ChurchtoolsService } from '../../services/churchtools.service';
-import { StammesEinteilungComponent, SortOption } from './stammes-einteilung.component';
+import { GroupingOption, GroupWrapper, SortOption, StammesEinteilungComponent } from './stammes-einteilung.component';
 
 describe('StammesEinteilungComponent', () => {
   let spectator: Spectator<StammesEinteilungComponent>;
@@ -239,6 +239,33 @@ describe('StammesEinteilungComponent', () => {
       expect(loadSpy).toHaveBeenCalled();
     });
 
+    it('sollte bei der Suche auch das Gruppierungskriterium berücksichtigen und den Gruppierungs-Präfix setzen', () => {
+      spectator.component.$anmeldungen.set([
+        { id: 1, personFields: { zip: '12345', city: 'Hannover' }, person: { domainAttributes: { firstName: 'Max', lastName: 'Muster' } } } as any,
+        { id: 2, personFields: { zip: '54321', city: 'Berlin' }, person: { domainAttributes: { firstName: 'Anna', lastName: 'Schmidt' } } } as any,
+      ]);
+
+      // Gruppierung nach Ort, Suche nach Ort
+      spectator.component.activeGrouping.set(GroupingOption.City);
+      spectator.component.searchTerm.set('hann');
+
+      let result = spectator.component.filteredParticipants();
+      expect(result.length).toBe(1);
+      expect((result[0] as GroupWrapper).isWrapper).toBe(true);
+      expect((result[0] as GroupWrapper).name).toBe('Ort: Hannover');
+      expect((result[0] as GroupWrapper).participants[0].id).toBe(1);
+
+      // Gruppierung nach PLZ, Suche nach PLZ
+      spectator.component.activeGrouping.set(GroupingOption.Zip);
+      spectator.component.searchTerm.set('543');
+
+      result = spectator.component.filteredParticipants();
+      expect(result.length).toBe(1);
+      expect((result[0] as GroupWrapper).isWrapper).toBe(true);
+      expect((result[0] as GroupWrapper).name).toBe('PLZ: 54321');
+      expect((result[0] as GroupWrapper).participants[0].id).toBe(2);
+    });
+
     it('Filter logic (filteredParticipants) filtert korrekt nach Text und Geschlecht', () => {
       spectator.component.$anmeldungen.set([
         { id: 1, personFields: { sexId: 1 }, person: { domainAttributes: { firstName: 'Max', lastName: 'Mustermann' } } } as any,
@@ -331,12 +358,12 @@ describe('StammesEinteilungComponent', () => {
     it('sollte is-dragging-container Klasse setzen, wenn isDragging true ist, um Layout-Jumps zu verhindern', () => {
       const container = spectator.query('.container-fluid');
       expect(container).not.toHaveClass('is-dragging-container');
-      
+
       const ev = new Event('dragstart') as DragEvent;
       spectator.component.onDragStart(ev, { type: 'PARTICIPANT', sourceZone: 'main', data: spectator.component.$anmeldungen()[0] });
       spectator.detectChanges();
       expect(spectator.query('.container-fluid')).toHaveClass('is-dragging-container');
-      
+
       spectator.component.onDragEnd();
       spectator.detectChanges();
       expect(spectator.query('.container-fluid')).not.toHaveClass('is-dragging-container');
@@ -353,19 +380,19 @@ describe('StammesEinteilungComponent', () => {
         const p1 = spectator.component.$anmeldungen()[0]; // B.X
         const p2 = spectator.component.$anmeldungen()[1]; // A.A
         const p3 = spectator.component.$anmeldungen()[2]; // C.Z
-        
+
         spectator.component.$anmeldungen.set([]);
         const testGroup = { id: 'group1', isWrapper: true, participants: [p1, p2] };
         // Wir haben in Stamm 0 eine Gruppe und einen Einzelteilnehmer
-        spectator.component.$staemme.set([ [testGroup as any, p3], [], [], [], [], [], [], [] ]);
+        spectator.component.$staemme.set([[testGroup as any, p3], [], [], [], [], [], [], []]);
       });
 
       it('sollte einen ganzen Stamm in die Teilnehmerliste verschieben und Gruppen auflösen', () => {
         const ev = new Event('drop') as DragEvent; ev.preventDefault = jest.fn(); ev.stopPropagation = jest.fn();
         spectator.component.draggedPayload = { type: 'STAMM', sourceZone: 'stamm-0', data: spectator.component.$staemme()[0] };
-        
+
         spectator.component.onDrop(ev, 'main');
-        
+
         expect(spectator.component.$staemme()[0].length).toBe(0);
         expect(spectator.component.$anmeldungen().length).toBe(3);
         // Alphabetische Sortierung muss nach dem Entpacken greifen! (A, X, Z)
@@ -376,9 +403,9 @@ describe('StammesEinteilungComponent', () => {
       it('sollte einen ganzen Stamm in einen Poolbereich verschieben und Gruppen auflösen', () => {
         const ev = new Event('drop') as DragEvent; ev.preventDefault = jest.fn(); ev.stopPropagation = jest.fn();
         spectator.component.draggedPayload = { type: 'STAMM', sourceZone: 'stamm-0', data: spectator.component.$staemme()[0] };
-        
+
         spectator.component.onDrop(ev, 'pool-1');
-        
+
         expect(spectator.component.$staemme()[0].length).toBe(0);
         expect(spectator.component.$pools()[1].participants.length).toBe(3);
         // Wrapper müssen aufgelöst worden sein
@@ -388,9 +415,9 @@ describe('StammesEinteilungComponent', () => {
       it('sollte einen ganzen Stamm in einen anderen Stamm verschieben und Gruppen beibehalten', () => {
         const ev = new Event('drop') as DragEvent; ev.preventDefault = jest.fn(); ev.stopPropagation = jest.fn();
         spectator.component.draggedPayload = { type: 'STAMM', sourceZone: 'stamm-0', data: spectator.component.$staemme()[0] };
-        
+
         spectator.component.onDrop(ev, 'stamm-2');
-        
+
         expect(spectator.component.$staemme()[0].length).toBe(0);
         expect(spectator.component.$staemme()[2].length).toBe(2); // Gruppe + Einzelteilnehmer
         expect((spectator.component.$staemme()[2][0] as any).isWrapper).toBe(true);

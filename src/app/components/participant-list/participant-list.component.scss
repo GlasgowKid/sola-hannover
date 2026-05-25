@@ -9,3 +9,13 @@
   background-color: var(--bs-primary-bg-subtle) !important;
   border: 2px dashed var(--bs-primary) !important;
 }
+.cursor-grab {
+  cursor: grab;
+}
+.cursor-grab:active {
+  cursor: grabbing;
+}
+.group-wrapper-card {
+  min-width: 140px;
+  border: 2px dashed var(--bs-border-color);
+}

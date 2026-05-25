@@ -45,8 +45,17 @@
               })
             "
           >
+            <div class="text-center text-muted small bg-light border-bottom" style="opacity: 0.5">
+              <i class="bi bi-grid-3x3-gap-fill"></i>
+              @if (wrap.name) {
+                <span class="ms-1 fw-bold">{{ wrap.name }}</span>
+              }
+            </div>
             @if (details()) {
-              <div class="p-1 bg-light border-bottom text-center small text-muted" style="font-size: 0.7rem;">
+              <div
+                class="p-1 bg-light border-bottom text-center small text-muted"
+                style="font-size: 0.7rem"
+              >
                 <span class="text-primary">{{ getBoysCount(wrap) }}</span> /
                 <span class="text-danger">{{ getGirlsCount(wrap) }}</span>
                 | Ø: {{ getAverageAge(wrap) }} | Var: {{ getAgeVariance(wrap) }}
