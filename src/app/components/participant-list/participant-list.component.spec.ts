@@ -80,4 +80,13 @@ describe('ParticipantListComponent', () => {
     spectator.triggerEventHandler(ParticipantCardComponent, 'dragStartNode', new Event('dragstart') as DragEvent);
     expect(emittedPayload).toBeDefined();
   });
+
+  it('sollte verfügbare Alter als Filteroptionen anzeigen', () => {
+    spectator.setInput('availableAges', [10, 11, 12, null]);
+    const options = spectator.queryAll('option');
+    expect(options.some(opt => opt.textContent?.trim() === '10 Jahre')).toBe(true);
+    expect(options.some(opt => opt.textContent?.trim() === '11 Jahre')).toBe(true);
+    expect(options.some(opt => opt.textContent?.trim() === '12 Jahre')).toBe(true);
+    expect(options.some(opt => opt.textContent?.trim() === 'keine Angabe')).toBe(true);
+  });
 });

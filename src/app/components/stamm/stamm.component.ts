@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { isValid, parseISO } from 'date-fns';
 import { GroupMember } from '../../../utils/ct-types';
+import { getMemberAge } from '../../../utils/age.util';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
 import { DragPayload, GroupWrapper, StammItem } from '../stammes-einteilung/stammes-einteilung.component';
 
@@ -34,13 +34,8 @@ export class StammComponent {
 
   validAges = computed(() => {
     return this.flatParticipants()
-      .map(m => {
-        const birthday = m.personFields?.birthday;
-        if (!birthday) return null;
-        const bd = parseISO(String(birthday));
-        return isValid(bd) ? new Date().getFullYear() - bd.getFullYear() : null;
-      })
-      .filter((a): a is number => a !== null && a > 0);
+      .map(m => getMemberAge(m))
+      .filter((a): a is number => a !== null);
   });
 
   averageAge = computed(() => {

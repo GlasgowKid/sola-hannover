@@ -16,6 +16,7 @@ export class ParticipantListComponent {
   dragOverZone = input<string | null>(null);
   showIds = input<boolean>(false);
   hasAnmeldungen = input<boolean>(false);
+  availableAges = input<(number | null)[]>([]);
   details = input<boolean>(false);
   allParticipants = input<GroupMember[]>([]);
 

@@ -1,7 +1,7 @@
 import { PercentPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, HostListener, input, output, signal } from '@angular/core';
-import { isValid, parseISO } from 'date-fns';
 import { GroupMember } from '../../../utils/ct-types';
+import { getMemberAge } from '../../../utils/age.util';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
 import { DragPayload, GroupWrapper } from '../stammes-einteilung/stammes-einteilung.component';
 
@@ -61,12 +61,7 @@ export class PoolToolbarComponent {
   }
 
   getValidAges(wrap: GroupWrapper) {
-    return wrap.participants.map(m => {
-      const birthday = m.personFields?.birthday;
-      if (!birthday) return null;
-      const bd = parseISO(String(birthday));
-      return isValid(bd) ? new Date().getFullYear() - bd.getFullYear() : null;
-    }).filter((a): a is number => a !== null && a > 0);
+    return wrap.participants.map(m => getMemberAge(m)).filter((a): a is number => a !== null);
   }
 
   getAverageAge(wrap: GroupWrapper) {

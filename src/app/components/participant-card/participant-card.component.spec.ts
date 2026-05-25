@@ -1,6 +1,7 @@
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
 import { ParticipantCardComponent } from './participant-card.component';
 import { GroupMember } from '../../../utils/ct-types';
+import { differenceInYears, parseISO } from 'date-fns';
 
 describe('ParticipantCardComponent', () => {
   let spectator: Spectator<ParticipantCardComponent>;
@@ -33,8 +34,7 @@ describe('ParticipantCardComponent', () => {
   });
 
   it('sollte das berechnete Alter anzeigen', () => {
-    const currentYear = new Date().getFullYear();
-    const expectedAge = currentYear - 2010;
+    const expectedAge = differenceInYears(new Date(), parseISO('2010-05-15'));
     expect(spectator.query('.fw-normal')).toHaveText(`(${expectedAge})`);
   });
 

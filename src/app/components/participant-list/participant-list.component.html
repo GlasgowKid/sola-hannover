@@ -13,6 +13,22 @@
           <option value='{"type":"gender","value":1}'>Jungs</option>
           <option value='{"type":"gender","value":2}'>Mädchen</option>
         </optgroup>
+        <optgroup label="Wünsche">
+          <option value='{"type":"wunsch","value":"zugeordnet"}'>zugeordnet</option>
+          <option value='{"type":"wunsch","value":"teilweise"}'>teilweise</option>
+          <option value='{"type":"wunsch","value":"ignoriert"}'>ignoriert</option>
+          <option value='{"type":"wunsch","value":"keine"}'>keine Wünsche</option>
+        </optgroup>
+        @if (availableAges().length > 0) {
+          <optgroup label="Alter">
+            @for (age of availableAges(); track age) {
+              <option value='{"type":"age","value":{{ age === null ? "null" : age }}}'>
+                @if (age === null) { keine Angabe }
+                @else { {{ age }} Jahre }
+              </option>
+            }
+          </optgroup>
+        }
       </select>
       <select class="form-select form-select-sm rounded-0" (change)="sortChange.emit($event)">
         <option value="lastName_asc" selected>Nachname (A bis Z)</option>

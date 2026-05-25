@@ -5,6 +5,8 @@ import { isValid, parseISO } from 'date-fns';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { Subject, distinctUntilChanged, firstValueFrom, of, switchMap, take } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
+import { getMemberAge, getMemberBirthday } from '../../../utils/age.util';
+import { getWunschStatus } from '../../../utils/wunsch.util';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
 import { ParticipantListComponent } from '../participant-list/participant-list.component';
@@ -27,7 +29,7 @@ export interface DragPayload {
 }
 
 interface UnifiedFilter {
-  type: 'all' | 'gender' | 'maRolle' | 'roleId';
+  type: 'all' | 'gender' | 'maRolle' | 'roleId' | 'age' | 'wunsch';
   value: any;
 }
 
@@ -385,10 +387,6 @@ export class StammesEinteilungComponent {
     return asc ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
   }
 
-  private getBirthday(member: GroupMember): string | null {
-    return member.personFields?.birthday ?? (member.person as any).birthday ?? (member.person.domainAttributes as any)?.birthday ?? null;
-  }
-
   searchTerm = signal<string>('');
   filteredParticipants = computed(() => {
     const query = this.searchTerm().toLowerCase().trim();
@@ -405,6 +403,12 @@ export class StammesEinteilungComponent {
       if (filter.type === 'gender') matchesDropdown = m.personFields?.sexId === filter.value;
       else if (filter.type === 'maRolle') matchesDropdown = this.getMaRolleValue(m) === filter.value;
       else if (filter.type === 'roleId') matchesDropdown = m.groupTypeRoleId === filter.value;
+      else if (filter.type === 'age') {
+        matchesDropdown = getMemberAge(m) === filter.value;
+      }
+      else if (filter.type === 'wunsch') {
+        matchesDropdown = getWunschStatus(m, this.allParticipants()) === filter.value;
+      }
 
       return matchesQuery && matchesDropdown;
     });
@@ -420,9 +424,9 @@ export class StammesEinteilungComponent {
         case SortOption.LastNameDesc:
           return this.sortString(`${a.person.domainAttributes.lastName} ${a.person.domainAttributes.firstName}`, `${b.person.domainAttributes.lastName} ${b.person.domainAttributes.firstName}`, false);
         case SortOption.AgeAsc:
-          return this.sortDate(this.getBirthday(a), this.getBirthday(b), false);
+          return this.sortDate(getMemberBirthday(a), getMemberBirthday(b), false);
         case SortOption.AgeDesc:
-          return this.sortDate(this.getBirthday(a), this.getBirthday(b), true);
+          return this.sortDate(getMemberBirthday(a), getMemberBirthday(b), true);
         case SortOption.IdAsc:
           return this.sortNumber(a.id, b.id, true);
         case SortOption.IdDesc:
@@ -544,6 +548,18 @@ export class StammesEinteilungComponent {
     this.$anmeldungen().forEach(p => { const r = this.getMaRolleValue(p); if (r) rollen.add(r); });
     return Array.from(rollen).sort();
   });
+
+  readonly availableAges = computed(() => {
+    const ages = new Set<number | null>();
+    this.$anmeldungen().forEach(p => { ages.add(getMemberAge(p)); });
+    return Array.from(ages).sort((a, b) => {
+      if (a === null && b === null) return 0;
+      if (a === null) return 1;
+      if (b === null) return -1;
+      return a - b;
+    });
+  });
+
   getPoolCountForFilter(type: string, value: any): number { return 0; }
   onFilterChange(event: Event) {
     const val = (event.target as HTMLSelectElement).value;

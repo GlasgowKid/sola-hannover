@@ -1,13 +1,8 @@
 import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { isValid, parseISO } from 'date-fns';
 import { GroupMember } from '../../../utils/ct-types';
-
-export interface WunschAnzeige {
-  text: string;
-  status: 'open' | 'ignored' | 'confirmed';
-  matchedPersonId?: number;
-}
+import { getMemberAge } from '../../../utils/age.util';
+import { WunschAnzeige, getWunsch } from '../../../utils/wunsch.util';
 
 @Component({
   selector: 'app-participant-card',
@@ -29,14 +24,11 @@ export class ParticipantCardComponent {
   resetNode = output<void>();
 
   age = computed(() => {
-    const birthday = this.item().personFields?.birthday;
-    if (!birthday) return null;
-    const bd = parseISO(String(birthday));
-    return isValid(bd) ? new Date().getFullYear() - bd.getFullYear() : null;
+    return getMemberAge(this.item());
   });
 
-  wunsch1 = computed(() => this.getWunschText('Wunsch 1'));
-  wunsch2 = computed(() => this.getWunschText('Wunsch 2'));
+  wunsch1 = computed(() => getWunsch(this.item(), 'Wunsch 1', this.allParticipants()));
+  wunsch2 = computed(() => getWunsch(this.item(), 'Wunsch 2', this.allParticipants()));
 
   wunschAmpel = computed<{ color: string; tooltip: string } | null>(() => {
     if (this.sourceZone() === 'main') return null;
@@ -69,30 +61,6 @@ export class ParticipantCardComponent {
 
     return null;
   });
-
-  private getWunschText(fieldName: string): WunschAnzeige | null {
-    const field = this.item().fields?.find(f => f.name === fieldName);
-    if (!field || !field.value) return null;
-    const val = String(field.value).trim();
-
-    if (val.toLowerCase().endsWith('(ignoriert)')) {
-      return { text: val.substring(0, val.lastIndexOf('(ignoriert)')).trim(), status: 'ignored' };
-    }
-
-    if (val.startsWith('https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%23')) {
-      const matched = this.allParticipants().find(m => m.person?.frontendUrl === val);
-      if (matched) {
-        return { 
-          text: `${matched.person.domainAttributes.firstName} ${matched.person.domainAttributes.lastName}`.trim(), 
-          status: 'confirmed',
-          matchedPersonId: matched.id
-        };
-      }
-      return { text: 'Unbekannter Link', status: 'confirmed' };
-    }
-
-    return { text: val, status: 'open' };
-  }
 
   onDragStart(event: DragEvent) {
     this.dragStartNode.emit(event);

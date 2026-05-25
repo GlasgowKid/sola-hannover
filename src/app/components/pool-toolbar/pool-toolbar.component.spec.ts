@@ -84,8 +84,8 @@ describe('PoolToolbarComponent', () => {
   it('sollte Pool Details (Ø Alter, Varianz, Geschlechter) anzeigen, wenn details true ist', () => {
     spectator.setInput('pools', [
       { id: 'pool-0', isWrapper: true, participants: [
-        { person: { domainAttributes: { firstName: 'M', lastName: 'J' } }, personFields: { sexId: 1, birthday: '2010-01-01' } },
-        { person: { domainAttributes: { firstName: 'A', lastName: 'M' } }, personFields: { sexId: 2, birthday: '2012-01-01' } }
+        { id: 1, person: { domainAttributes: { firstName: 'M', lastName: 'J' } }, personFields: { sexId: 1, birthday: '2010-01-01' } },
+        { id: 2, person: { domainAttributes: { firstName: 'A', lastName: 'M' } }, personFields: { sexId: 2, birthday: '2012-01-01' } }
       ]} as any
     ]);
     spectator.setInput('details', false);
