@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { GroupMember } from '../../../utils/ct-types';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
 import { DragPayload, GroupWrapper, StammItem } from '../stammes-einteilung/stammes-einteilung.component';
@@ -6,7 +7,7 @@ import { DragPayload, GroupWrapper, StammItem } from '../stammes-einteilung/stam
 @Component({
   selector: 'app-participant-list',
   standalone: true,
-  imports: [ParticipantCardComponent],
+  imports: [ParticipantCardComponent, FormsModule],
   templateUrl: './participant-list.component.html',
   styleUrl: './participant-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -23,8 +24,8 @@ export class ParticipantListComponent {
   currentSort = input<string>('lastName_asc');
 
   filterChange = output<Event>();
-  sortChange = output<Event>();
-  groupingChange = output<Event>();
+  sortChange = output<string>();
+  groupingChange = output<string>();
   searchChange = output<Event>();
 
   dragOverNode = output<DragEvent>();

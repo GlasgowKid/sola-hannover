@@ -449,18 +449,17 @@ describe('StammesEinteilungComponent', () => {
       spectator.component.activeSort.set(SortOption.LastNameAsc);
       spectator.component.activeGroupSort.set(GroupSortOption.GroupAsc);
 
-      const mockEvent = { target: { value: 'groupSize_desc' } } as unknown as Event;
-      spectator.component.onSortChange(mockEvent);
+      spectator.component.onSortChange('groupSize_desc');
 
       expect(spectator.component.activeGroupSort()).toBe(GroupSortOption.SizeDesc);
       expect(spectator.component.activeSort()).toBe(SortOption.LastNameAsc);
     });
 
     it('sollte bei Gruppierungswechsel die Standard-Gruppensortierung setzen', () => {
-      spectator.component.onGroupingChange({ target: { value: GroupingOption.Zip } } as unknown as Event);
+      spectator.component.onGroupingChange(GroupingOption.Zip);
       expect(spectator.component.activeGroupSort()).toBe(GroupSortOption.GroupAsc);
 
-      spectator.component.onGroupingChange({ target: { value: GroupingOption.Wunsch } } as unknown as Event);
+      spectator.component.onGroupingChange(GroupingOption.Wunsch);
       expect(spectator.component.activeGroupSort()).toBe(GroupSortOption.SizeDesc);
     });
 

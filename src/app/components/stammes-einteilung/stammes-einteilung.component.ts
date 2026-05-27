@@ -82,8 +82,7 @@ export class StammesEinteilungComponent {
   readonly activeSort = signal<SortOption>(SortOption.LastNameAsc);
   readonly activeGroupSort = signal<GroupSortOption>(GroupSortOption.GroupAsc);
 
-  onSortChange(event: Event) {
-    const val = (event.target as HTMLSelectElement).value;
+  onSortChange(val: string) {
     if (val === GroupSortOption.GroupAsc || val === GroupSortOption.GroupDesc || val === GroupSortOption.SizeAsc || val === GroupSortOption.SizeDesc) {
       this.activeGroupSort.set(val as GroupSortOption);
     } else {
@@ -92,13 +91,13 @@ export class StammesEinteilungComponent {
   }
 
   readonly activeGrouping = signal<GroupingOption>(GroupingOption.None);
-  onGroupingChange(event: Event) {
-    const val = (event.target as HTMLSelectElement).value as GroupingOption;
-    this.activeGrouping.set(val);
-
-    if (val === GroupingOption.Zip || val === GroupingOption.City) {
+  onGroupingChange(val: string) {
+    const grouping = val as GroupingOption;
+    this.activeGrouping.set(grouping);
+    
+    if (grouping === GroupingOption.Zip || grouping === GroupingOption.City) {
       this.activeGroupSort.set(GroupSortOption.GroupAsc);
-    } else if (val === GroupingOption.Wunsch) {
+    } else if (grouping === GroupingOption.Wunsch) {
       this.activeGroupSort.set(GroupSortOption.SizeDesc);
     }
   }

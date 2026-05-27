@@ -1,3 +1,5 @@
+import { FormsModule } from '@angular/forms';
+import { By } from '@angular/platform-browser';
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
 import { GroupMember } from '../../../utils/ct-types';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
@@ -10,7 +12,7 @@ describe('ParticipantListComponent', () => {
   const createComponent = createComponentFactory({
     component: ParticipantListComponent,
     shallow: true, // Mockt die ParticipantCardComponent
-    imports: [ParticipantCardComponent]
+    imports: [ParticipantCardComponent, FormsModule]
   });
 
   const mockParticipants: StammItem[] = [
@@ -44,8 +46,8 @@ describe('ParticipantListComponent', () => {
 
   it('sollte Events für Filter, Sortierung, Gruppierung und Suche emitten', () => {
     let filterEvent: Event | undefined;
-    let sortEvent: Event | undefined;
-    let groupingEvent: Event | undefined;
+    let sortEvent: string | undefined;
+    let groupingEvent: string | undefined;
     let searchEvent: Event | undefined;
     spectator.component.filterChange.subscribe(e => (filterEvent = e));
     spectator.component.sortChange.subscribe(e => (sortEvent = e));
@@ -54,13 +56,16 @@ describe('ParticipantListComponent', () => {
 
     const selects = spectator.queryAll('select');
     spectator.dispatchFakeEvent(selects[0], 'change');
-    spectator.dispatchFakeEvent(selects[1], 'change');
-    spectator.dispatchFakeEvent(selects[2], 'change');
+
+    const selectsDebug = spectator.debugElement.queryAll(By.css('select'));
+    spectator.triggerEventHandler(selectsDebug[1], 'ngModelChange', 'age_asc');
+    spectator.triggerEventHandler(selectsDebug[2], 'ngModelChange', 'zip');
+
     spectator.typeInElement('Max', 'input[type="text"]');
 
     expect(filterEvent).toBeTruthy();
-    expect(sortEvent).toBeTruthy();
-    expect(groupingEvent).toBeTruthy();
+    expect(sortEvent).toBe('age_asc');
+    expect(groupingEvent).toBe('zip');
     expect(searchEvent).toBeTruthy();
   });
 
@@ -97,30 +102,63 @@ describe('ParticipantListComponent', () => {
 
   it('sollte Sortieroptionen für Gruppen anzeigen, wenn activeGrouping zip ist', () => {
     spectator.setInput('activeGrouping', 'zip');
-    const options = spectator.queryAll('option');
-    expect(options.some(opt => opt.getAttribute('value') === 'groupSize_asc')).toBe(true);
-    expect(options.some(opt => opt.getAttribute('value') === 'groupSize_desc')).toBe(true);
-    expect(options.some(opt => opt.getAttribute('value') === 'group_asc')).toBe(true);
+    const options = spectator.queryAll('option') as HTMLOptionElement[];
+    expect(options.some(opt => opt.value.includes('groupSize_asc'))).toBe(true);
+    expect(options.some(opt => opt.value.includes('groupSize_desc'))).toBe(true);
+    expect(options.some(opt => opt.value.includes('group_asc'))).toBe(true);
     expect(options.some(opt => opt.textContent?.trim() === 'PLZ (aufsteigend)')).toBe(true);
   });
 
   it('sollte Sortieroptionen für Gruppen anzeigen, wenn activeGrouping city ist', () => {
     spectator.setInput('activeGrouping', 'city');
-    const options = spectator.queryAll('option');
-    expect(options.some(opt => opt.getAttribute('value') === 'group_asc')).toBe(true);
+    const options = spectator.queryAll('option') as HTMLOptionElement[];
+    expect(options.some(opt => opt.value.includes('group_asc'))).toBe(true);
     expect(options.some(opt => opt.textContent?.trim() === 'Ort (A bis Z)')).toBe(true);
   });
 
   it('sollte asc/desc Optionen für Gruppen verstecken, wenn activeGrouping wunsch ist', () => {
     spectator.setInput('activeGrouping', 'wunsch');
-    const options = spectator.queryAll('option');
-    expect(options.some(opt => opt.getAttribute('value') === 'group_asc')).toBe(false);
-    expect(options.some(opt => opt.getAttribute('value') === 'groupSize_asc')).toBe(true);
+    const options = spectator.queryAll('option') as HTMLOptionElement[];
+    expect(options.some(opt => opt.value.includes('group_asc'))).toBe(false);
+    expect(options.some(opt => opt.value.includes('groupSize_asc'))).toBe(true);
   });
 
   it('sollte Sortieroptionen für Gruppen verstecken, wenn activeGrouping none ist', () => {
     spectator.setInput('activeGrouping', 'none');
-    const options = spectator.queryAll('option');
-    expect(options.some(opt => opt.getAttribute('value') === 'groupSize_asc')).toBe(false);
+    const options = spectator.queryAll('option') as HTMLOptionElement[];
+    expect(options.some(opt => opt.value.includes('groupSize_asc'))).toBe(false);
+  });
+
+  it('sollte das Auswahlfeld für die Sortierung im DOM korrekt aktualisieren, wenn sich die aktiven Inputs ändern', async () => {
+    // Simulieren des Wechsels auf Gruppierung 'zip' mit der neuen automatischen Sortierung 'group_asc'
+    spectator.setInput('activeGrouping', 'zip');
+    spectator.setInput('currentSort', 'group_asc');
+
+    // Bei ngModel müssen wir warten, bis die Formularelemente asynchron synchronisiert wurden
+    await spectator.fixture.whenStable();
+
+    const sortSelect = spectator.queryAll('select')[1] as HTMLSelectElement;
+    expect(sortSelect.value).toContain('group_asc');
+  });
+
+  it('sollte bei Wechsel der Gruppierung auf Ort den korrekten Sortierungswert im DOM anzeigen', async () => {
+    // 1) Ich stelle das Auswahlfeld "Gruppierung" auf "keine Gruppierung".
+    // Das Auswahlfeld "Sortierung" ist auf "Nachname (A bis Z)" eingestellt.
+    spectator.setInput('activeGrouping', 'none');
+    spectator.setInput('currentSort', 'lastName_asc');
+    await spectator.fixture.whenStable();
+
+    let sortSelect = spectator.queryAll('select')[1] as HTMLSelectElement;
+    expect(sortSelect.value).toContain('lastName_asc');
+
+    // 2) Ich ändere das Auswahlfeld "Gruppierung" auf "nach Ort gruppiert".
+    spectator.setInput('activeGrouping', 'city');
+    spectator.setInput('currentSort', 'group_asc');
+    await spectator.fixture.whenStable();
+
+    // Erwartetes Verhalten: Das Auswahlfeld "Sortierung" zeigt den korrekten Wert "Ort (A bis Z)"
+    sortSelect = spectator.queryAll('select')[1] as HTMLSelectElement;
+    expect(sortSelect.value).toContain('group_asc');
+    expect(sortSelect.options[sortSelect.selectedIndex].textContent?.trim()).toBe('Ort (A bis Z)');
   });
 });

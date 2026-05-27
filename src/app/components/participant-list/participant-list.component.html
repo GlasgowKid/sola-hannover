@@ -39,42 +39,42 @@
       </select>
       <select
         class="form-select form-select-sm rounded-0"
-        [value]="currentSort()"
-        (change)="sortChange.emit($event)"
+        [ngModel]="currentSort()"
+        (ngModelChange)="sortChange.emit($event)"
       >
         @if (activeGrouping() !== 'none') {
-          <option value="groupSize_desc">Gruppengröße (absteigend)</option>
-          <option value="groupSize_asc">Gruppengröße (aufsteigend)</option>
+          <option [ngValue]="'groupSize_desc'">Gruppengröße (absteigend)</option>
+          <option [ngValue]="'groupSize_asc'">Gruppengröße (aufsteigend)</option>
           @if (activeGrouping() === 'zip') {
-            <option value="group_asc">PLZ (aufsteigend)</option>
-            <option value="group_desc">PLZ (absteigend)</option>
+            <option [ngValue]="'group_asc'">PLZ (aufsteigend)</option>
+            <option [ngValue]="'group_desc'">PLZ (absteigend)</option>
           }
           @if (activeGrouping() === 'city') {
-            <option value="group_asc">Ort (A bis Z)</option>
-            <option value="group_desc">Ort (Z bis A)</option>
+            <option [ngValue]="'group_asc'">Ort (A bis Z)</option>
+            <option [ngValue]="'group_desc'">Ort (Z bis A)</option>
           }
           <option disabled>──────────</option>
         }
-        <option value="lastName_asc" selected>Nachname (A bis Z)</option>
-        <option value="lastName_desc">Nachname (Z bis A)</option>
-        <option value="firstName_asc">Vorname (A bis Z)</option>
-        <option value="firstName_desc">Vorname (Z bis A)</option>
-        <option value="age_asc">Alter (aufsteigend)</option>
-        <option value="age_desc">Alter (absteigend)</option>
+        <option [ngValue]="'lastName_asc'">Nachname (A bis Z)</option>
+        <option [ngValue]="'lastName_desc'">Nachname (Z bis A)</option>
+        <option [ngValue]="'firstName_asc'">Vorname (A bis Z)</option>
+        <option [ngValue]="'firstName_desc'">Vorname (Z bis A)</option>
+        <option [ngValue]="'age_asc'">Alter (aufsteigend)</option>
+        <option [ngValue]="'age_desc'">Alter (absteigend)</option>
         @if (showIds()) {
-          <option value="id_asc">ID (aufsteigend)</option>
-          <option value="id_desc">ID (absteigend)</option>
+          <option [ngValue]="'id_asc'">ID (aufsteigend)</option>
+          <option [ngValue]="'id_desc'">ID (absteigend)</option>
         }
       </select>
       <select
         class="form-select form-select-sm rounded-0"
-        [value]="activeGrouping()"
-        (change)="groupingChange.emit($event)"
+        [ngModel]="activeGrouping()"
+        (ngModelChange)="groupingChange.emit($event)"
       >
-        <option value="none" selected>keine Gruppierung</option>
-        <option value="zip">nach PLZ gruppiert</option>
-        <option value="city">nach Ort gruppiert</option>
-        <option value="wunsch">nach Wünschen gruppiert</option>
+        <option [ngValue]="'none'">keine Gruppierung</option>
+        <option [ngValue]="'zip'">nach PLZ gruppiert</option>
+        <option [ngValue]="'city'">nach Ort gruppiert</option>
+        <option [ngValue]="'wunsch'">nach Wünschen gruppiert</option>
       </select>
       <input
         type="text"
