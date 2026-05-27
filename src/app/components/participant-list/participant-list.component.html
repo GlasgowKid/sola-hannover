@@ -50,9 +50,10 @@
         }
       </select>
       <select class="form-select form-select-sm rounded-0" (change)="groupingChange.emit($event)">
-        <option value="none" selected>Keine Gruppierung</option>
-        <option value="zip">Nach PLZ gruppiert</option>
-        <option value="city">Nach Ort gruppiert</option>
+        <option value="none" selected>keine Gruppierung</option>
+        <option value="zip">nach PLZ gruppiert</option>
+        <option value="city">nach Ort gruppiert</option>
+        <option value="wunsch">nach Wünschen gruppiert</option>
       </select>
       <input
         type="text"

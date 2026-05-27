@@ -48,3 +48,57 @@ export function getWunschStatus(member: GroupMember, allParticipants: GroupMembe
 
   return 'teilweise';
 }
+
+export function buildWunschClusters(elementsToCluster: GroupMember[], allParticipants: GroupMember[]): { clusters: GroupMember[][], withoutGroup: GroupMember[] } {
+  const visited = new Set<number>();
+  const adj = new Map<number, Set<number>>();
+
+  elementsToCluster.forEach(p => adj.set(p.id, new Set()));
+
+  elementsToCluster.forEach(p => {
+    const w1 = getWunsch(p, 'Wunsch 1', allParticipants);
+    const w2 = getWunsch(p, 'Wunsch 2', allParticipants);
+
+    [w1, w2].forEach(w => {
+      if (w?.status === 'confirmed' && w.matchedPersonId !== undefined) {
+        if (adj.has(w.matchedPersonId)) {
+          adj.get(p.id)!.add(w.matchedPersonId);
+          adj.get(w.matchedPersonId)!.add(p.id); // ungerichteter Graph
+        }
+      }
+    });
+  });
+
+  const clusters: GroupMember[][] = [];
+  const withoutGroup: GroupMember[] = [];
+
+  elementsToCluster.forEach(p => {
+    if (!visited.has(p.id)) {
+      const component: GroupMember[] = [];
+      const queue = [p.id];
+      visited.add(p.id);
+
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        const member = elementsToCluster.find(m => m.id === current);
+        if (member) component.push(member);
+
+        adj.get(current)?.forEach(neighbor => {
+          if (!visited.has(neighbor)) {
+            visited.add(neighbor);
+            queue.push(neighbor);
+          }
+        });
+      }
+
+      if (component.length > 1) {
+        component.sort((a, b) => elementsToCluster.indexOf(a) - elementsToCluster.indexOf(b));
+        clusters.push(component);
+      } else {
+        withoutGroup.push(...component);
+      }
+    }
+  });
+
+  return { clusters, withoutGroup };
+}

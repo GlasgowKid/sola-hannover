@@ -1,6 +1,7 @@
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { of } from 'rxjs';
+import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { GroupingOption, GroupWrapper, SortOption, StammesEinteilungComponent } from './stammes-einteilung.component';
 
@@ -264,6 +265,23 @@ describe('StammesEinteilungComponent', () => {
       expect((result[0] as GroupWrapper).isWrapper).toBe(true);
       expect((result[0] as GroupWrapper).name).toBe('PLZ: 54321');
       expect((result[0] as GroupWrapper).participants[0].id).toBe(2);
+    });
+
+    it('sollte bei Gruppierung nach Wunsch die automatischen Wunschgruppen bilden', () => {
+      const ctUrlPrefix = 'https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%23';
+      const p1 = { id: 1, person: { domainAttributes: { firstName: 'A', lastName: 'A' }, frontendUrl: `${ctUrlPrefix}1` }, fields: [{ name: 'Wunsch 1', value: `${ctUrlPrefix}2` }] } as any;
+      const p2 = { id: 2, person: { domainAttributes: { firstName: 'B', lastName: 'B' }, frontendUrl: `${ctUrlPrefix}2` }, fields: [] } as any;
+      const p3 = { id: 3, person: { domainAttributes: { firstName: 'C', lastName: 'C' }, frontendUrl: `${ctUrlPrefix}3` }, fields: [] } as any;
+
+      spectator.component.$anmeldungen.set([p1, p2, p3]);
+      spectator.component.activeGrouping.set(GroupingOption.Wunsch);
+
+      const result = spectator.component.filteredParticipants();
+      expect(result.length).toBe(2); // 1 Wrapper Gruppe + 1 Einzelperson
+      expect((result[0] as GroupWrapper).isWrapper).toBe(true);
+      expect((result[0] as GroupWrapper).participants.length).toBe(2);
+      expect((result[0] as GroupWrapper).participants.map(p => p.id)).toEqual([1, 2]); // P1 und P2 sind verbunden
+      expect((result[1] as GroupMember).id).toBe(3); // P3 ist isoliert
     });
 
     it('Filter logic (filteredParticipants) filtert korrekt nach Text und Geschlecht', () => {

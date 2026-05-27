@@ -6,7 +6,7 @@ import { BsModalService } from 'ngx-bootstrap/modal';
 import { Subject, distinctUntilChanged, firstValueFrom, of, switchMap, take } from 'rxjs';
 import { getMemberAge, getMemberBirthday } from '../../../utils/age.util';
 import { GroupMember } from '../../../utils/ct-types';
-import { getWunschStatus } from '../../../utils/wunsch.util';
+import { buildWunschClusters, getWunschStatus } from '../../../utils/wunsch.util';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
 import { ParticipantListComponent } from '../participant-list/participant-list.component';
@@ -24,7 +24,8 @@ export interface GroupWrapper {
 export enum GroupingOption {
   None = 'none',
   Zip = 'zip',
-  City = 'city'
+  City = 'city',
+  Wunsch = 'wunsch'
 }
 
 export type StammItem = GroupMember | GroupWrapper;
@@ -461,6 +462,20 @@ export class StammesEinteilungComponent {
 
     if (grouping === GroupingOption.None) {
       return sorted;
+    }
+
+    if (grouping === GroupingOption.Wunsch) {
+      const { clusters, withoutGroup } = buildWunschClusters(sorted, this.allParticipants());
+      const result: StammItem[] = [];
+      clusters.forEach((cluster, index) => {
+        result.push({
+          id: `wrapper-wunsch-${index}`,
+          isWrapper: true,
+          participants: cluster
+        });
+      });
+      result.push(...withoutGroup);
+      return result;
     }
 
     const grouped = new Map<string, GroupMember[]>();
