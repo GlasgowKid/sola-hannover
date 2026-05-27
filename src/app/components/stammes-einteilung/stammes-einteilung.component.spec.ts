@@ -3,7 +3,7 @@ import { BsModalService } from 'ngx-bootstrap/modal';
 import { of } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
-import { GroupingOption, GroupWrapper, SortOption, StammesEinteilungComponent } from './stammes-einteilung.component';
+import { GroupingOption, GroupSortOption, GroupWrapper, SortOption, StammesEinteilungComponent } from './stammes-einteilung.component';
 
 describe('StammesEinteilungComponent', () => {
   let spectator: Spectator<StammesEinteilungComponent>;
@@ -441,6 +441,74 @@ describe('StammesEinteilungComponent', () => {
         expect((spectator.component.$staemme()[2][0] as any).isWrapper).toBe(true);
         expect(spectator.component.$staemme()[2][1].id).toBe(3);
       });
+    });
+  });
+
+  describe('Sortierung nach Gruppengröße', () => {
+    it('sollte activeGroupSort aktualisieren und activeSort unberührt lassen, wenn Gruppengröße gewählt wird', () => {
+      spectator.component.activeSort.set(SortOption.LastNameAsc);
+      spectator.component.activeGroupSort.set(GroupSortOption.GroupAsc);
+
+      const mockEvent = { target: { value: 'groupSize_desc' } } as unknown as Event;
+      spectator.component.onSortChange(mockEvent);
+
+      expect(spectator.component.activeGroupSort()).toBe(GroupSortOption.SizeDesc);
+      expect(spectator.component.activeSort()).toBe(SortOption.LastNameAsc);
+    });
+
+    it('sollte bei Gruppierungswechsel die Standard-Gruppensortierung setzen', () => {
+      spectator.component.onGroupingChange({ target: { value: GroupingOption.Zip } } as unknown as Event);
+      expect(spectator.component.activeGroupSort()).toBe(GroupSortOption.GroupAsc);
+
+      spectator.component.onGroupingChange({ target: { value: GroupingOption.Wunsch } } as unknown as Event);
+      expect(spectator.component.activeGroupSort()).toBe(GroupSortOption.SizeDesc);
+    });
+
+    it('sollte Gruppen nach Größe sortieren (aufsteigend und absteigend)', () => {
+      spectator.component.$anmeldungen.set([
+        { id: 1, personFields: { city: 'Hannover' }, person: { domainAttributes: { firstName: 'A', lastName: 'A' } } } as any,
+        { id: 2, personFields: { city: 'Berlin' }, person: { domainAttributes: { firstName: 'B', lastName: 'B' } } } as any,
+        { id: 3, personFields: { city: 'Berlin' }, person: { domainAttributes: { firstName: 'C', lastName: 'C' } } } as any,
+        { id: 4, personFields: { city: 'Bremen' }, person: { domainAttributes: { firstName: 'D', lastName: 'D' } } } as any,
+        { id: 5, personFields: { city: 'Bremen' }, person: { domainAttributes: { firstName: 'E', lastName: 'E' } } } as any,
+        { id: 6, personFields: { city: 'Bremen' }, person: { domainAttributes: { firstName: 'F', lastName: 'F' } } } as any,
+      ]);
+
+      spectator.component.activeGrouping.set(GroupingOption.City);
+
+      spectator.component.activeGroupSort.set(GroupSortOption.SizeAsc);
+      let result = spectator.component.filteredParticipants();
+      expect((result[0] as GroupWrapper).name).toBe('Ort: Hannover');
+      expect((result[1] as GroupWrapper).name).toBe('Ort: Berlin');
+      expect((result[2] as GroupWrapper).name).toBe('Ort: Bremen');
+
+      spectator.component.activeGroupSort.set(GroupSortOption.SizeDesc);
+      result = spectator.component.filteredParticipants();
+      expect((result[0] as GroupWrapper).name).toBe('Ort: Bremen');
+      expect((result[1] as GroupWrapper).name).toBe('Ort: Berlin');
+      expect((result[2] as GroupWrapper).name).toBe('Ort: Hannover');
+    });
+
+    it('sollte Gruppen alphabetisch / numerisch sortieren (aufsteigend und absteigend)', () => {
+      spectator.component.$anmeldungen.set([
+        { id: 1, personFields: { city: 'Hannover' }, person: { domainAttributes: { firstName: 'A', lastName: 'A' } } } as any,
+        { id: 2, personFields: { city: 'Bremen' }, person: { domainAttributes: { firstName: 'B', lastName: 'B' } } } as any,
+        { id: 3, personFields: { city: 'Berlin' }, person: { domainAttributes: { firstName: 'C', lastName: 'C' } } } as any,
+      ]);
+
+      spectator.component.activeGrouping.set(GroupingOption.City);
+
+      spectator.component.activeGroupSort.set(GroupSortOption.GroupAsc);
+      let result = spectator.component.filteredParticipants();
+      expect((result[0] as GroupWrapper).name).toBe('Ort: Berlin');
+      expect((result[1] as GroupWrapper).name).toBe('Ort: Bremen');
+      expect((result[2] as GroupWrapper).name).toBe('Ort: Hannover');
+
+      spectator.component.activeGroupSort.set(GroupSortOption.GroupDesc);
+      result = spectator.component.filteredParticipants();
+      expect((result[0] as GroupWrapper).name).toBe('Ort: Hannover');
+      expect((result[1] as GroupWrapper).name).toBe('Ort: Bremen');
+      expect((result[2] as GroupWrapper).name).toBe('Ort: Berlin');
     });
   });
 });

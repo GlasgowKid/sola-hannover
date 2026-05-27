@@ -23,6 +23,8 @@
           [details]="details()"
           [availableAges]="availableAges()"
           [allParticipants]="allParticipants()"
+          [activeGrouping]="activeGrouping()"
+          [currentSort]="activeGrouping() !== 'none' ? activeGroupSort() : activeSort()"
           (filterChange)="onFilterChange($event)"
           (sortChange)="onSortChange($event)"
           (groupingChange)="onGroupingChange($event)"

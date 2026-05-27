@@ -94,4 +94,33 @@ describe('ParticipantListComponent', () => {
     expect(options.some(opt => opt.textContent?.trim() === '12 Jahre')).toBe(true);
     expect(options.some(opt => opt.textContent?.trim() === 'keine Angabe')).toBe(true);
   });
+
+  it('sollte Sortieroptionen für Gruppen anzeigen, wenn activeGrouping zip ist', () => {
+    spectator.setInput('activeGrouping', 'zip');
+    const options = spectator.queryAll('option');
+    expect(options.some(opt => opt.getAttribute('value') === 'groupSize_asc')).toBe(true);
+    expect(options.some(opt => opt.getAttribute('value') === 'groupSize_desc')).toBe(true);
+    expect(options.some(opt => opt.getAttribute('value') === 'group_asc')).toBe(true);
+    expect(options.some(opt => opt.textContent?.trim() === 'PLZ (aufsteigend)')).toBe(true);
+  });
+
+  it('sollte Sortieroptionen für Gruppen anzeigen, wenn activeGrouping city ist', () => {
+    spectator.setInput('activeGrouping', 'city');
+    const options = spectator.queryAll('option');
+    expect(options.some(opt => opt.getAttribute('value') === 'group_asc')).toBe(true);
+    expect(options.some(opt => opt.textContent?.trim() === 'Ort (A bis Z)')).toBe(true);
+  });
+
+  it('sollte asc/desc Optionen für Gruppen verstecken, wenn activeGrouping wunsch ist', () => {
+    spectator.setInput('activeGrouping', 'wunsch');
+    const options = spectator.queryAll('option');
+    expect(options.some(opt => opt.getAttribute('value') === 'group_asc')).toBe(false);
+    expect(options.some(opt => opt.getAttribute('value') === 'groupSize_asc')).toBe(true);
+  });
+
+  it('sollte Sortieroptionen für Gruppen verstecken, wenn activeGrouping none ist', () => {
+    spectator.setInput('activeGrouping', 'none');
+    const options = spectator.queryAll('option');
+    expect(options.some(opt => opt.getAttribute('value') === 'groupSize_asc')).toBe(false);
+  });
 });

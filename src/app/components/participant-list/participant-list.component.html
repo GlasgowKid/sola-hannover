@@ -37,7 +37,24 @@
           </optgroup>
         }
       </select>
-      <select class="form-select form-select-sm rounded-0" (change)="sortChange.emit($event)">
+      <select
+        class="form-select form-select-sm rounded-0"
+        [value]="currentSort()"
+        (change)="sortChange.emit($event)"
+      >
+        @if (activeGrouping() !== 'none') {
+          <option value="groupSize_desc">Gruppengröße (absteigend)</option>
+          <option value="groupSize_asc">Gruppengröße (aufsteigend)</option>
+          @if (activeGrouping() === 'zip') {
+            <option value="group_asc">PLZ (aufsteigend)</option>
+            <option value="group_desc">PLZ (absteigend)</option>
+          }
+          @if (activeGrouping() === 'city') {
+            <option value="group_asc">Ort (A bis Z)</option>
+            <option value="group_desc">Ort (Z bis A)</option>
+          }
+          <option disabled>──────────</option>
+        }
         <option value="lastName_asc" selected>Nachname (A bis Z)</option>
         <option value="lastName_desc">Nachname (Z bis A)</option>
         <option value="firstName_asc">Vorname (A bis Z)</option>
@@ -49,7 +66,11 @@
           <option value="id_desc">ID (absteigend)</option>
         }
       </select>
-      <select class="form-select form-select-sm rounded-0" (change)="groupingChange.emit($event)">
+      <select
+        class="form-select form-select-sm rounded-0"
+        [value]="activeGrouping()"
+        (change)="groupingChange.emit($event)"
+      >
         <option value="none" selected>keine Gruppierung</option>
         <option value="zip">nach PLZ gruppiert</option>
         <option value="city">nach Ort gruppiert</option>

@@ -52,6 +52,13 @@ export enum SortOption {
   IdDesc = 'id_desc'
 }
 
+export enum GroupSortOption {
+  GroupAsc = 'group_asc',
+  GroupDesc = 'group_desc',
+  SizeAsc = 'groupSize_asc',
+  SizeDesc = 'groupSize_desc'
+}
+
 @Component({
   selector: 'app-stammeseinteilung',
   standalone: true,
@@ -73,15 +80,27 @@ export class StammesEinteilungComponent {
 
   readonly activeFilter = signal<UnifiedFilter>({ type: 'all', value: null });
   readonly activeSort = signal<SortOption>(SortOption.LastNameAsc);
+  readonly activeGroupSort = signal<GroupSortOption>(GroupSortOption.GroupAsc);
 
   onSortChange(event: Event) {
-    const val = (event.target as HTMLSelectElement).value as SortOption;
-    this.activeSort.set(val);
+    const val = (event.target as HTMLSelectElement).value;
+    if (val === GroupSortOption.GroupAsc || val === GroupSortOption.GroupDesc || val === GroupSortOption.SizeAsc || val === GroupSortOption.SizeDesc) {
+      this.activeGroupSort.set(val as GroupSortOption);
+    } else {
+      this.activeSort.set(val as SortOption);
+    }
   }
 
   readonly activeGrouping = signal<GroupingOption>(GroupingOption.None);
   onGroupingChange(event: Event) {
-    this.activeGrouping.set((event.target as HTMLSelectElement).value as GroupingOption);
+    const val = (event.target as HTMLSelectElement).value as GroupingOption;
+    this.activeGrouping.set(val);
+
+    if (val === GroupingOption.Zip || val === GroupingOption.City) {
+      this.activeGroupSort.set(GroupSortOption.GroupAsc);
+    } else if (val === GroupingOption.Wunsch) {
+      this.activeGroupSort.set(GroupSortOption.SizeDesc);
+    }
   }
 
   // STRIKTE ZONEN
@@ -408,6 +427,7 @@ export class StammesEinteilungComponent {
     const filter = this.activeFilter();
     const sort = this.activeSort();
     const grouping = this.activeGrouping();
+    const groupSort = this.activeGroupSort();
 
     let filtered = all.filter(m => {
       let matchesQuery = !query ||
@@ -474,6 +494,13 @@ export class StammesEinteilungComponent {
           participants: cluster
         });
       });
+
+      if (groupSort === GroupSortOption.SizeAsc) {
+        result.sort((a, b) => (a as GroupWrapper).participants.length - (b as GroupWrapper).participants.length);
+      } else if (groupSort === GroupSortOption.SizeDesc) {
+        result.sort((a, b) => (b as GroupWrapper).participants.length - (a as GroupWrapper).participants.length);
+      }
+
       result.push(...withoutGroup);
       return result;
     }
@@ -496,7 +523,18 @@ export class StammesEinteilungComponent {
     });
 
     const result: StammItem[] = [];
-    const sortedKeys = Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b));
+    const sortedKeys = Array.from(grouped.keys());
+
+    if (groupSort === GroupSortOption.SizeAsc) {
+      sortedKeys.sort((a, b) => grouped.get(a)!.length - grouped.get(b)!.length || a.localeCompare(b, undefined, { numeric: true }));
+    } else if (groupSort === GroupSortOption.SizeDesc) {
+      sortedKeys.sort((a, b) => grouped.get(b)!.length - grouped.get(a)!.length || a.localeCompare(b, undefined, { numeric: true }));
+    } else if (groupSort === GroupSortOption.GroupDesc) {
+      sortedKeys.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    } else {
+      sortedKeys.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    }
+
     const prefix = grouping === GroupingOption.Zip ? 'PLZ' : (grouping === GroupingOption.City ? 'Ort' : '');
     sortedKeys.forEach(key => {
       result.push({

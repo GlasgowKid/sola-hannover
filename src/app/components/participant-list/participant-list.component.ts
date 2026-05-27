@@ -19,6 +19,8 @@ export class ParticipantListComponent {
   availableAges = input<(number | null)[]>([]);
   details = input<boolean>(false);
   allParticipants = input<GroupMember[]>([]);
+  activeGrouping = input<string>('none');
+  currentSort = input<string>('lastName_asc');
 
   filterChange = output<Event>();
   sortChange = output<Event>();
