@@ -83,6 +83,12 @@ describe('ParticipantCardComponent', () => {
     expect(emittedEvent).toBeTruthy();
   });
 
+  it('sollte native Drag&Drop Funktionalität deaktivieren, wenn isDraggable false ist', () => {
+    spectator.setInput('isDraggable', false);
+    expect(spectator.query('.participant-card')).not.toHaveClass('cursor-move');
+    expect(spectator.query('.participant-card')?.getAttribute('draggable')).toBeNull();
+  });
+
   it('sollte onDoubleClick emitten und stopPropagation aufrufen, wenn dblclick ausgelöst wird', () => {
     let emittedEvent: MouseEvent | undefined;
     spectator.component.dblClickNode.subscribe(e => (emittedEvent = e));

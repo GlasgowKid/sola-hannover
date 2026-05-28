@@ -1,5 +1,6 @@
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
 import { BsModalRef } from 'ngx-bootstrap/modal';
+import { SortableModule } from 'ngx-bootstrap/sortable';
 import { MoveModalComponent } from './move-modal.component';
 
 describe('MoveModalComponent', () => {
@@ -8,6 +9,7 @@ describe('MoveModalComponent', () => {
 
   const createComponent = createComponentFactory({
     component: MoveModalComponent,
+    imports: [SortableModule],
     detectChanges: false,
     providers: [
       { provide: BsModalRef, useValue: {} }
@@ -35,18 +37,34 @@ describe('MoveModalComponent', () => {
   });
 
   it('sollte onClose mit target aufrufen und das Modal schließen bei confirmMove()', () => {
-    let result: string | null | undefined;
+    let result: any;
     spectator.component.onClose.subscribe(res => (result = res));
 
     spectator.component.moveModalTarget.set('stamm-2');
     spectator.component.confirmMove();
 
-    expect(result).toBe('stamm-2');
+    expect(result.target).toBe('stamm-2');
     expect(modalRefMock.hide).toHaveBeenCalled();
   });
 
+  it('sollte die Reihenfolge der Teilnehmer per bs-sortable ändern können', () => {
+    const p1 = { id: 1, person: { domainAttributes: { firstName: 'A' } } } as any;
+    const p2 = { id: 2, person: { domainAttributes: { firstName: 'B' } } } as any;
+    spectator.component.extractedParticipants = [p1, p2];
+    spectator.detectChanges();
+
+    spectator.component.extractedParticipants = [p2, p1];
+    spectator.detectChanges();
+
+    let result: any;
+    spectator.component.onClose.subscribe(res => (result = res));
+    spectator.component.confirmMove();
+
+    expect(result.participants.map((p: any) => p.id)).toEqual([2, 1]);
+  });
+
   it('sollte onClose mit null aufrufen und das Modal schließen bei cancel()', () => {
-    let result: string | null | undefined;
+    let result: any;
     spectator.component.onClose.subscribe(res => (result = res));
 
     spectator.component.cancel();

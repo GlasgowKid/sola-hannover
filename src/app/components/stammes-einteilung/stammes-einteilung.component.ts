@@ -141,7 +141,7 @@ export class StammesEinteilungComponent {
       class: 'modal-lg',
       initialState: {
         payload,
-        extractedParticipants: extracted,
+        extractedParticipants: [...extracted],
         showIds: this.showIds(),
         details: this.details(),
         allParticipants: this.allParticipants(),
@@ -150,15 +150,70 @@ export class StammesEinteilungComponent {
       }
     });
 
-    bsModalRef.content!.onClose.pipe(take(1)).subscribe((target: string | null) => {
-      if (target && payload.sourceZone !== target) {
-        this.draggedPayload = payload;
-        const fakeEvent = new Event('drop') as DragEvent;
-        fakeEvent.preventDefault = () => { };
-        fakeEvent.stopPropagation = () => { };
-        this.onDrop(fakeEvent, target);
+    bsModalRef.content!.onClose.pipe(take(1)).subscribe((result: { target: string; participants: GroupMember[] } | null) => {
+      if (!result) return;
+
+      const { target, participants } = result;
+
+      const originalIds = extracted.map(p => p.id).join(',');
+      const newIds = participants.map(p => p.id).join(',');
+      const orderChanged = originalIds !== newIds;
+
+      if (payload.sourceZone === target) {
+        if (orderChanged) {
+          this.reorderInZone(payload, participants);
+        }
+        return;
       }
+
+      // It's a move to a different zone.
+      let newPayload = { ...payload };
+      if (orderChanged) {
+        if (payload.type === 'GROUP') {
+          newPayload.data = { ...payload.data, participants: participants };
+        } else if (payload.type === 'POOL') {
+          newPayload.data = participants;
+        } else if (payload.type === 'STAMM') {
+          // The structure is lost, so we treat it as a POOL drop.
+          newPayload = {
+            type: 'POOL',
+            sourceZone: payload.sourceZone,
+            data: participants
+          };
+        }
+      }
+
+      this.draggedPayload = newPayload;
+      const fakeEvent = new Event('drop') as DragEvent;
+      fakeEvent.preventDefault = () => { };
+      fakeEvent.stopPropagation = () => { };
+      this.onDrop(fakeEvent, target);
     });
+  }
+
+  private reorderInZone(payload: DragPayload, orderedParticipants: GroupMember[]) {
+    const { type, sourceZone, data } = payload;
+
+    if (type === 'GROUP' && sourceZone.startsWith('stamm-')) {
+      const stammIdx = parseInt(sourceZone.split('-')[1], 10);
+      this.$staemme.update(staemme => {
+        const newStaemme = [...staemme];
+        newStaemme[stammIdx] = newStaemme[stammIdx].map(item => (this.isGroupWrapper(item) && item.id === data.id) ? { ...item, participants: orderedParticipants } : item);
+        return newStaemme;
+      });
+      this.isDirty.set(true);
+    } else if (type === 'POOL') {
+      this.$pools.update(pools => pools.map(pool => (pool.id === sourceZone) ? { ...pool, participants: orderedParticipants } : pool));
+      this.isDirty.set(true);
+    } else if (type === 'STAMM') {
+      const stammIdx = parseInt(sourceZone.split('-')[1], 10);
+      this.$staemme.update(staemme => {
+        const newStaemme = [...staemme];
+        newStaemme[stammIdx] = orderedParticipants;
+        return newStaemme;
+      });
+      this.isDirty.set(true);
+    }
   }
 
   details = signal<boolean>(false);

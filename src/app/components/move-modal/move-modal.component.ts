@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BsModalRef } from 'ngx-bootstrap/modal';
+import { SortableModule } from 'ngx-bootstrap/sortable';
 import { Subject } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
@@ -9,7 +10,7 @@ import { DragPayload, GroupWrapper } from '../stammes-einteilung/stammes-einteil
 @Component({
   selector: 'app-move-modal',
   standalone: true,
-  imports: [ParticipantCardComponent, FormsModule],
+  imports: [ParticipantCardComponent, FormsModule, SortableModule],
   templateUrl: './move-modal.component.html'
 })
 export class MoveModalComponent implements OnInit {
@@ -24,7 +25,7 @@ export class MoveModalComponent implements OnInit {
   pools: GroupWrapper[] = [];
 
   moveModalTarget = signal<string>('main');
-  onClose = new Subject<string | null>();
+  onClose = new Subject<{ target: string; participants: GroupMember[] } | null>();
 
   get staemmeIndices() {
     return Array.from({ length: this.staemmeCount }, (_, i) => i);
@@ -37,8 +38,12 @@ export class MoveModalComponent implements OnInit {
     this.moveModalTarget.set(defaultTarget);
   }
 
+  get unwrappedParticipants(): GroupMember[] {
+    return this.extractedParticipants.map((p: any) => p.initData ? p.initData : p);
+  }
+
   confirmMove() {
-    this.onClose.next(this.moveModalTarget());
+    this.onClose.next({ target: this.moveModalTarget(), participants: this.unwrappedParticipants });
     this.bsModalRef.hide();
   }
 

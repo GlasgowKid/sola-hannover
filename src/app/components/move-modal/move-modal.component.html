@@ -6,18 +6,23 @@
   <div class="row g-3">
     <div class="col-md-6">
       <h6 class="fw-bold mb-2">Betroffene Teilnehmer:</h6>
-      <div class="d-flex flex-column gap-1" style="max-height: 400px; overflow-y: auto">
-        @for (p of extractedParticipants; track p.id) {
-          <app-participant-card
-            [item]="p"
-            sourceZone="modal"
-            [showIds]="showIds"
-            [details]="details"
-            [allParticipants]="allParticipants"
-            [currentZoneParticipants]="extractedParticipants"
-          ></app-participant-card>
-        }
-      </div>
+      <bs-sortable
+        [(ngModel)]="extractedParticipants"
+        [itemTemplate]="sortableItemTemplate"
+        wrapperClass="d-flex flex-column gap-1"
+        style="max-height: 400px; overflow-y: auto; display: block"
+      ></bs-sortable>
+      <ng-template #sortableItemTemplate let-item="item">
+        <app-participant-card
+          [item]="item.initData ? item.initData : item"
+          sourceZone="modal"
+          [showIds]="showIds"
+          [details]="details"
+          [allParticipants]="allParticipants"
+          [currentZoneParticipants]="unwrappedParticipants"
+          [isDraggable]="false"
+        ></app-participant-card>
+      </ng-template>
     </div>
     <div class="col-md-6">
       <h6 class="fw-bold mb-2">Ziel auswählen:</h6>
@@ -31,16 +36,12 @@
         }
         <optgroup label="Stämme">
           @for (idx of staemmeIndices; track idx) {
-            @if (payload.sourceZone !== 'stamm-' + idx) {
-              <option [value]="'stamm-' + idx">Stamm {{ idx + 1 }}</option>
-            }
+            <option [value]="'stamm-' + idx">Stamm {{ idx + 1 }}</option>
           }
         </optgroup>
         <optgroup label="Pools">
           @for (pool of pools; track pool.id; let i = $index) {
-            @if (payload.sourceZone !== pool.id) {
-              <option [value]="pool.id">Pool {{ i + 1 }}</option>
-            }
+            <option [value]="pool.id">Pool {{ i + 1 }}</option>
           }
         </optgroup>
       </select>

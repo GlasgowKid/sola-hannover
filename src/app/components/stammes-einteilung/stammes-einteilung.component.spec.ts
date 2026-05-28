@@ -537,17 +537,40 @@ describe('StammesEinteilungComponent', () => {
       const payload: any = { type: 'PARTICIPANT', sourceZone: 'main', data: spectator.component.$anmeldungen()[0] };
 
       const modalService = spectator.inject(BsModalService);
-      const onCloseSubject = new Subject<string | null>();
+      const onCloseSubject = new Subject<{ target: string; participants: GroupMember[] } | null>();
       const bsModalRefMock = { content: { onClose: onCloseSubject } };
       jest.spyOn(modalService, 'show').mockReturnValue(bsModalRefMock as any);
 
       const dropSpy = jest.spyOn(spectator.component, 'onDrop');
       spectator.component.openMoveModal(payload);
 
-      onCloseSubject.next('stamm-1');
+      onCloseSubject.next({ target: 'stamm-1', participants: [payload.data] });
 
       expect(dropSpy).toHaveBeenCalled();
       expect(spectator.component.$staemme()[1].length).toBe(1);
+    });
+
+    it('sollte Elemente innerhalb einer Zone neu anordnen, wenn das Ziel die Quellzone ist', () => {
+      const p1 = { id: 10, person: { domainAttributes: { firstName: 'A' } } } as any;
+      const p2 = { id: 20, person: { domainAttributes: { firstName: 'B' } } } as any;
+      spectator.component.$pools.update(pools => {
+        pools[0].participants = [p1, p2];
+        return pools;
+      });
+      const payload: any = { type: 'POOL', sourceZone: 'pool-0', data: [p1, p2] };
+
+      const modalService = spectator.inject(BsModalService);
+      const onCloseSubject = new Subject<{ target: string; participants: GroupMember[] } | null>();
+      const bsModalRefMock = { content: { onClose: onCloseSubject } };
+      jest.spyOn(modalService, 'show').mockReturnValue(bsModalRefMock as any);
+
+      const reorderSpy = jest.spyOn(spectator.component as any, 'reorderInZone');
+      spectator.component.openMoveModal(payload);
+
+      onCloseSubject.next({ target: 'pool-0', participants: [p2, p1] });
+
+      expect(reorderSpy).toHaveBeenCalledWith(payload, [p2, p1]);
+      expect(spectator.component.$pools()[0].participants.map(p => p.id)).toEqual([20, 10]);
     });
   });
 });

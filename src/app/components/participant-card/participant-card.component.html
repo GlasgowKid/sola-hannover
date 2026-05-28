@@ -1,7 +1,8 @@
 <div
-  class="p-1 mb-1 border rounded shadow-sm lh-sm small d-flex flex-column participant-card cursor-move"
-  draggable="true"
-  (dragstart)="onDragStart($event)"
+  class="p-1 mb-1 border rounded shadow-sm lh-sm small d-flex flex-column participant-card"
+  [class.cursor-move]="isDraggable()"
+  [attr.draggable]="isDraggable() ? true : null"
+  (dragstart)="isDraggable() ? onDragStart($event) : null"
   (dblclick)="onDoubleClick($event)"
   [ngClass]="{
     'border-primary bg-primary-subtle': item().personFields?.sexId === 1,

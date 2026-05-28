@@ -19,6 +19,7 @@ export class ParticipantCardComponent {
   details = input<boolean>(false);
   allParticipants = input<GroupMember[]>([]);
   currentZoneParticipants = input<GroupMember[]>([]);
+  isDraggable = input<boolean>(true);
 
   dragStartNode = output<DragEvent>();
   dblClickNode = output<MouseEvent>();
