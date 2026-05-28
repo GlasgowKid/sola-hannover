@@ -91,6 +91,29 @@ describe('ParticipantListComponent', () => {
     expect(emittedPayload).toBeDefined();
   });
 
+  it('sollte dblClickItem emitten, wenn auf eine ParticipantCard doppelt geklickt wird', () => {
+    let emittedPayload: any;
+    spectator.component.dblClickItem.subscribe(p => (emittedPayload = p));
+
+    spectator.triggerEventHandler(ParticipantCardComponent, 'dblClickNode', new MouseEvent('dblclick'));
+    expect(emittedPayload).toBeDefined();
+    expect(emittedPayload.payload.type).toBe('PARTICIPANT');
+    expect(emittedPayload.payload.sourceZone).toBe('main');
+  });
+
+  it('sollte dblClickItem emitten, wenn auf den Header einer Gruppe doppelt geklickt wird', () => {
+    spectator.setInput('participants', [{ id: 'group1', isWrapper: true, participants: [] } as any]);
+    let emittedPayload: any;
+    spectator.component.dblClickItem.subscribe(p => (emittedPayload = p));
+
+    const header = spectator.query('.group-wrapper-card .bg-light.border-bottom') as HTMLElement;
+    header.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+
+    expect(emittedPayload).toBeDefined();
+    expect(emittedPayload.payload.type).toBe('GROUP');
+    expect(emittedPayload.payload.sourceZone).toBe('main');
+  });
+
   it('sollte verfügbare Alter als Filteroptionen anzeigen', () => {
     spectator.setInput('availableAges', [10, 11, 12, null]);
     const options = spectator.queryAll('option');

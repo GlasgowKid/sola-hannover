@@ -1,14 +1,16 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
 import { NgxDatatableModule } from '@siemens/ngx-datatable';
 import { isValid, parseISO } from 'date-fns';
 import { BsModalService } from 'ngx-bootstrap/modal';
-import { Subject, distinctUntilChanged, firstValueFrom, of, switchMap, take } from 'rxjs';
+import { distinctUntilChanged, firstValueFrom, of, Subject, switchMap, take } from 'rxjs';
 import { getMemberAge, getMemberBirthday } from '../../../utils/age.util';
 import { GroupMember } from '../../../utils/ct-types';
 import { buildWunschClusters, getWunschStatus } from '../../../utils/wunsch.util';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
+import { MoveModalComponent } from '../move-modal/move-modal.component';
 import { ParticipantListComponent } from '../participant-list/participant-list.component';
 import { PoolToolbarComponent } from '../pool-toolbar/pool-toolbar.component';
 import { SolaSelectorComponent } from '../sola-selector/sola-selector.component';
@@ -62,7 +64,7 @@ export enum GroupSortOption {
 @Component({
   selector: 'app-stammeseinteilung',
   standalone: true,
-  imports: [NgxDatatableModule, SolaSelectorComponent, ParticipantListComponent, StammComponent, PoolToolbarComponent],
+  imports: [NgxDatatableModule, SolaSelectorComponent, ParticipantListComponent, StammComponent, PoolToolbarComponent, FormsModule],
   templateUrl: './stammes-einteilung.component.html',
   styleUrl: './stammes-einteilung.component.scss',
 })
@@ -94,7 +96,7 @@ export class StammesEinteilungComponent {
   onGroupingChange(val: string) {
     const grouping = val as GroupingOption;
     this.activeGrouping.set(grouping);
-    
+
     if (grouping === GroupingOption.Zip || grouping === GroupingOption.City) {
       this.activeGroupSort.set(GroupSortOption.GroupAsc);
     } else if (grouping === GroupingOption.Wunsch) {
@@ -127,6 +129,37 @@ export class StammesEinteilungComponent {
 
   showIds = signal<boolean>(false);
   toggleIds() { this.showIds.update(v => !v); }
+
+  openMoveModal(payload: DragPayload) {
+    let extracted: GroupMember[] = [];
+    if (payload.type === 'PARTICIPANT') extracted = [payload.data];
+    else if (payload.type === 'GROUP') extracted = [...payload.data.participants];
+    else if (payload.type === 'POOL') extracted = [...payload.data];
+    else if (payload.type === 'STAMM') extracted = this.expandParticipants(payload.data);
+
+    const bsModalRef = this.modalService.show(MoveModalComponent, {
+      class: 'modal-lg',
+      initialState: {
+        payload,
+        extractedParticipants: extracted,
+        showIds: this.showIds(),
+        details: this.details(),
+        allParticipants: this.allParticipants(),
+        staemmeCount: this.$staemme().length,
+        pools: this.$pools()
+      }
+    });
+
+    bsModalRef.content!.onClose.pipe(take(1)).subscribe((target: string | null) => {
+      if (target && payload.sourceZone !== target) {
+        this.draggedPayload = payload;
+        const fakeEvent = new Event('drop') as DragEvent;
+        fakeEvent.preventDefault = () => { };
+        fakeEvent.stopPropagation = () => { };
+        this.onDrop(fakeEvent, target);
+      }
+    });
+  }
 
   details = signal<boolean>(false);
   toggleDetails() { this.details.update(v => !v); }

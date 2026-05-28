@@ -11,6 +11,15 @@
           })
         : null
     "
+    (dblclick)="
+      group().length > 0
+        ? dblClickItem.emit({
+            event: $event,
+            payload: { type: 'STAMM', sourceZone: 'stamm-' + stammIdx(), data: group() },
+          })
+        : null;
+      $event.stopPropagation()
+    "
   >
     <div class="text-truncate fw-semibold">Stamm {{ stammIdx() + 1 }}</div>
     <span class="badge bg-light text-dark ms-2 flex-shrink-0">
@@ -41,9 +50,15 @@
               payload: { type: 'GROUP', sourceZone: 'stamm-' + stammIdx(), data: item },
             })
           "
+          (dblclick)="
+            dblClickItem.emit({
+              event: $event,
+              payload: { type: 'GROUP', sourceZone: 'stamm-' + stammIdx(), data: item },
+            });
+            $event.stopPropagation()
+          "
         >
           <div class="text-center text-muted small bg-light border-bottom" style="opacity: 0.5">
-            <i class="bi bi-grid-3x3-gap-fill"></i>
             @if (item.name) {
               <span class="ms-1 fw-bold">{{ item.name }}</span>
             }
@@ -59,6 +74,12 @@
                 [currentZoneParticipants]="flatParticipants()"
                 (dragStartNode)="
                   dragStartItem.emit({
+                    event: $event,
+                    payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: p },
+                  })
+                "
+                (dblClickNode)="
+                  dblClickItem.emit({
                     event: $event,
                     payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: p },
                   })
@@ -79,6 +100,12 @@
           [currentZoneParticipants]="flatParticipants()"
           (dragStartNode)="
             dragStartItem.emit({
+              event: $event,
+              payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: item },
+            })
+          "
+          (dblClickNode)="
+            dblClickItem.emit({
               event: $event,
               payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: item },
             })

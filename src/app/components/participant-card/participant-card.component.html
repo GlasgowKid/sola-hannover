@@ -2,6 +2,7 @@
   class="p-1 mb-1 border rounded shadow-sm lh-sm small d-flex flex-column participant-card cursor-move"
   draggable="true"
   (dragstart)="onDragStart($event)"
+  (dblclick)="onDoubleClick($event)"
   [ngClass]="{
     'border-primary bg-primary-subtle': item().personFields?.sexId === 1,
     'border-danger bg-danger-subtle': item().personFields?.sexId === 2,
@@ -25,7 +26,11 @@
     @if (sourceZone() !== 'main') {
       <div class="d-flex align-items-center ms-2 flex-shrink-0 mt-1">
         @if (wunschAmpel(); as ampel) {
-          <div class="rounded-circle bg-{{ ampel.color }} me-2" style="width: 10px; height: 10px;" [title]="ampel.tooltip"></div>
+          <div
+            class="rounded-circle bg-{{ ampel.color }} me-2"
+            style="width: 10px; height: 10px"
+            [title]="ampel.tooltip"
+          ></div>
         }
         <button
           type="button"
@@ -39,26 +44,32 @@
   </div>
 
   @if (details()) {
-    <div class="mt-1 d-flex flex-column gap-1" style="font-size: 0.75rem;">
+    <div class="mt-1 d-flex flex-column gap-1" style="font-size: 0.75rem">
       @if (item().personFields?.zip || item().personFields?.city) {
-        <div class="text-muted">
-          {{ item().personFields?.zip }} {{ item().personFields?.city }}
-        </div>
+        <div class="text-muted">{{ item().personFields?.zip }} {{ item().personFields?.city }}</div>
       }
       @if (wunsch1(); as w1) {
-        <div 
-          class="text-truncate" 
+        <div
+          class="text-truncate"
           [title]="w1.text"
-          [ngClass]="{'text-success': w1.status === 'confirmed', 'text-warning-emphasis': w1.status === 'ignored', 'text-danger': w1.status === 'open'}"
+          [ngClass]="{
+            'text-success': w1.status === 'confirmed',
+            'text-warning-emphasis': w1.status === 'ignored',
+            'text-danger': w1.status === 'open',
+          }"
         >
           W1: {{ w1.text }}
         </div>
       }
       @if (wunsch2(); as w2) {
-        <div 
-          class="text-truncate" 
+        <div
+          class="text-truncate"
           [title]="w2.text"
-          [ngClass]="{'text-success': w2.status === 'confirmed', 'text-warning-emphasis': w2.status === 'ignored', 'text-danger': w2.status === 'open'}"
+          [ngClass]="{
+            'text-success': w2.status === 'confirmed',
+            'text-warning-emphasis': w2.status === 'ignored',
+            'text-danger': w2.status === 'open',
+          }"
         >
           W2: {{ w2.text }}
         </div>

@@ -21,6 +21,7 @@ export class ParticipantCardComponent {
   currentZoneParticipants = input<GroupMember[]>([]);
 
   dragStartNode = output<DragEvent>();
+  dblClickNode = output<MouseEvent>();
   resetNode = output<void>();
 
   age = computed(() => {
@@ -64,6 +65,11 @@ export class ParticipantCardComponent {
 
   onDragStart(event: DragEvent) {
     this.dragStartNode.emit(event);
+    event.stopPropagation();
+  }
+
+  onDoubleClick(event: MouseEvent) {
+    this.dblClickNode.emit(event);
     event.stopPropagation();
   }
 

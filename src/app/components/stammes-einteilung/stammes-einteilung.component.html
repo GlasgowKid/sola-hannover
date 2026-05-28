@@ -33,6 +33,7 @@
           (dragLeaveNode)="onDragLeave($event, 'main')"
           (dropNode)="onDrop($event, 'main')"
           (dragStartItem)="onDragStart($event.event, $event.payload)"
+          (dblClickItem)="openMoveModal($event.payload)"
         ></app-participant-list>
       </div>
     </div>
@@ -53,6 +54,7 @@
               (dragLeaveNode)="onDragLeave($event, 'stamm-' + stammIdx)"
               (dropNode)="onDrop($event, 'stamm-' + stammIdx)"
               (dragStartItem)="onDragStart($event.event, $event.payload)"
+              (dblClickItem)="openMoveModal($event.payload)"
               (resetItem)="resetParticipant($event)"
             ></app-stamm>
           </div>
@@ -79,6 +81,7 @@
       (dragLeaveNode)="onDragLeave($event.event, $event.zone)"
       (dropNode)="onDrop($event.event, $event.zone)"
       (dragStartItem)="onDragStart($event.event, $event.payload)"
+      (dblClickItem)="openMoveModal($event.payload)"
       (resetItem)="resetParticipant($event)"
     ></app-pool-toolbar>
   }

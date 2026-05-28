@@ -78,6 +78,18 @@ describe('StammComponent', () => {
     expect(header?.getAttribute('draggable')).toBeNull();
   });
 
+  it('sollte dblClickItem emitten, wenn auf den Header des Stammes doppelt geklickt wird', () => {
+    let emittedPayload: any;
+    spectator.component.dblClickItem.subscribe(p => (emittedPayload = p));
+
+    const header = spectator.query('.card-header') as HTMLElement;
+    header.dispatchEvent(new MouseEvent('dblclick'));
+
+    expect(emittedPayload).toBeDefined();
+    expect(emittedPayload.payload.type).toBe('STAMM');
+    expect(emittedPayload.payload.sourceZone).toBe('stamm-0');
+  });
+
   it('sollte resetItem-Event der Kindkarten weiterleiten', () => {
     let emittedMember: GroupMember | undefined;
     spectator.component.resetItem.subscribe(m => (emittedMember = m));

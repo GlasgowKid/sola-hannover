@@ -37,7 +37,7 @@ describe('PoolToolbarComponent', () => {
 
   it('sollte die Speichern-Buttons richtig sperren oder aktivieren', () => {
     const saveBtn = spectator.query('.btn-primary') as HTMLButtonElement;
-    
+
     // disabled, da isDirty false und progress 0
     expect(saveBtn.disabled).toBe(true);
 
@@ -76,6 +76,18 @@ describe('PoolToolbarComponent', () => {
     expect(dragStartEmitted.payload.type).toBe('POOL');
   });
 
+  it('sollte dblClickItem emitten, wenn auf den Header eines Pools doppelt geklickt wird', () => {
+    let emittedPayload: any;
+    spectator.component.dblClickItem.subscribe(p => (emittedPayload = p));
+
+    const header = spectator.query('.group-wrapper-card .bg-light.border-bottom') as HTMLElement;
+    header.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+
+    expect(emittedPayload).toBeDefined();
+    expect(emittedPayload.payload.type).toBe('POOL');
+    expect(emittedPayload.payload.sourceZone).toBe('pool-0');
+  });
+
   it('sollte z-index und CSS Klasse anpassen, wenn isDragging true ist', () => {
     spectator.setInput('isDragging', true);
     expect(spectator.query('.navbar')).toHaveClass('is-dragging-nav');
@@ -83,10 +95,12 @@ describe('PoolToolbarComponent', () => {
 
   it('sollte Pool Details (Ø Alter, Varianz, Geschlechter) anzeigen, wenn details true ist', () => {
     spectator.setInput('pools', [
-      { id: 'pool-0', isWrapper: true, participants: [
-        { id: 1, person: { domainAttributes: { firstName: 'M', lastName: 'J' } }, personFields: { sexId: 1, birthday: '2010-01-01' } },
-        { id: 2, person: { domainAttributes: { firstName: 'A', lastName: 'M' } }, personFields: { sexId: 2, birthday: '2012-01-01' } }
-      ]} as any
+      {
+        id: 'pool-0', isWrapper: true, participants: [
+          { id: 1, person: { domainAttributes: { firstName: 'M', lastName: 'J' } }, personFields: { sexId: 1, birthday: '2010-01-01' } },
+          { id: 2, person: { domainAttributes: { firstName: 'A', lastName: 'M' } }, personFields: { sexId: 2, birthday: '2012-01-01' } }
+        ]
+      } as any
     ]);
     spectator.setInput('details', false);
     expect(spectator.query('.text-primary')).not.toExist();

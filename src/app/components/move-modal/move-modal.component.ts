@@ -1,0 +1,49 @@
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { BsModalRef } from 'ngx-bootstrap/modal';
+import { Subject } from 'rxjs';
+import { GroupMember } from '../../../utils/ct-types';
+import { ParticipantCardComponent } from '../participant-card/participant-card.component';
+import { DragPayload, GroupWrapper } from '../stammes-einteilung/stammes-einteilung.component';
+
+@Component({
+  selector: 'app-move-modal',
+  standalone: true,
+  imports: [ParticipantCardComponent, FormsModule],
+  templateUrl: './move-modal.component.html'
+})
+export class MoveModalComponent implements OnInit {
+  bsModalRef = inject(BsModalRef);
+
+  payload!: DragPayload;
+  extractedParticipants: GroupMember[] = [];
+  showIds: boolean = false;
+  details: boolean = false;
+  allParticipants: GroupMember[] = [];
+  staemmeCount: number = 0;
+  pools: GroupWrapper[] = [];
+
+  moveModalTarget = signal<string>('main');
+  onClose = new Subject<string | null>();
+
+  get staemmeIndices() {
+    return Array.from({ length: this.staemmeCount }, (_, i) => i);
+  }
+
+  ngOnInit() {
+    let defaultTarget = 'main';
+    if (this.payload?.sourceZone === 'main') defaultTarget = 'stamm-0';
+    else if (this.payload?.sourceZone.startsWith('stamm-') || this.payload?.sourceZone.startsWith('pool-')) defaultTarget = 'main';
+    this.moveModalTarget.set(defaultTarget);
+  }
+
+  confirmMove() {
+    this.onClose.next(this.moveModalTarget());
+    this.bsModalRef.hide();
+  }
+
+  cancel() {
+    this.onClose.next(null);
+    this.bsModalRef.hide();
+  }
+}

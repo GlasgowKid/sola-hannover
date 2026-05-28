@@ -55,7 +55,7 @@ describe('ParticipantCardComponent', () => {
   it('sollte korrekte CSS-Klassen für Geschlechter anwenden', () => {
     // Jungs (1) = primary
     expect(spectator.query('.participant-card')).toHaveClass('border-primary');
-    
+
     // Mädchen (2) = danger
     spectator.setInput('item', getMockMember(2));
     expect(spectator.query('.participant-card')).toHaveClass('border-danger');
@@ -67,7 +67,7 @@ describe('ParticipantCardComponent', () => {
 
   it('sollte den Zurücksetzen-Button nur anzeigen, wenn sourceZone nicht main ist', () => {
     expect(spectator.query('.btn-close')).not.toExist();
-    
+
     spectator.setInput('sourceZone', 'stamm-0');
     expect(spectator.query('.btn-close')).toExist();
   });
@@ -75,12 +75,24 @@ describe('ParticipantCardComponent', () => {
   it('sollte onDragStart emitten und stopPropagation aufrufen', () => {
     let emittedEvent: DragEvent | undefined;
     spectator.component.dragStartNode.subscribe(e => (emittedEvent = e));
-    
+
     const event = new Event('dragstart') as DragEvent;
     event.stopPropagation = jest.fn();
     spectator.query('.participant-card')?.dispatchEvent(event);
-    
+
     expect(emittedEvent).toBeTruthy();
+  });
+
+  it('sollte onDoubleClick emitten und stopPropagation aufrufen, wenn dblclick ausgelöst wird', () => {
+    let emittedEvent: MouseEvent | undefined;
+    spectator.component.dblClickNode.subscribe(e => (emittedEvent = e));
+
+    const event = new MouseEvent('dblclick');
+    event.stopPropagation = jest.fn();
+    spectator.query('.participant-card')?.dispatchEvent(event);
+
+    expect(emittedEvent).toBeTruthy();
+    expect(event.stopPropagation).toHaveBeenCalled();
   });
 
   it('sollte onReset emitten wenn das X geklickt wird', () => {
@@ -123,7 +135,7 @@ describe('ParticipantCardComponent', () => {
     ]);
     spectator.setInput('item', getMockMember(1, undefined, [{ name: 'Wunsch 1', value: 'https://sola-hannover.church.tools/?q=churchdb#PersonView/searchEntry:%2399' }]));
     spectator.setInput('details', true);
-    
+
     const w1 = spectator.queryAll('.text-truncate')[0];
     expect(w1).toHaveText('W1: Anna Müller');
     expect(w1).toHaveClass('text-success');

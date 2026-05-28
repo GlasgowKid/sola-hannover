@@ -34,6 +34,7 @@ export class PoolToolbarComponent {
   dragLeaveNode = output<{ event: DragEvent, zone: string }>();
   dropNode = output<{ event: DragEvent, zone: string }>();
   dragStartItem = output<{ event: DragEvent, payload: DragPayload }>();
+  dblClickItem = output<{ event: MouseEvent, payload: DragPayload }>();
   resetItem = output<GroupMember>();
 
   constructor() {

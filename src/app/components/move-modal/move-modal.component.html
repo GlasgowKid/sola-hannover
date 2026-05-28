@@ -1,0 +1,53 @@
+<div class="modal-header">
+  <h5 class="modal-title m-0">Elemente verschieben</h5>
+  <button type="button" class="btn-close" aria-label="Close" (click)="cancel()"></button>
+</div>
+<div class="modal-body">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <h6 class="fw-bold mb-2">Betroffene Teilnehmer:</h6>
+      <div class="d-flex flex-column gap-1" style="max-height: 400px; overflow-y: auto">
+        @for (p of extractedParticipants; track p.id) {
+          <app-participant-card
+            [item]="p"
+            sourceZone="modal"
+            [showIds]="showIds"
+            [details]="details"
+            [allParticipants]="allParticipants"
+            [currentZoneParticipants]="extractedParticipants"
+          ></app-participant-card>
+        }
+      </div>
+    </div>
+    <div class="col-md-6">
+      <h6 class="fw-bold mb-2">Ziel auswählen:</h6>
+      <select
+        class="form-select"
+        [ngModel]="moveModalTarget()"
+        (ngModelChange)="moveModalTarget.set($event)"
+      >
+        @if (payload.sourceZone !== 'main') {
+          <option value="main">Zurücksetzen (Teilnehmerliste)</option>
+        }
+        <optgroup label="Stämme">
+          @for (idx of staemmeIndices; track idx) {
+            @if (payload.sourceZone !== 'stamm-' + idx) {
+              <option [value]="'stamm-' + idx">Stamm {{ idx + 1 }}</option>
+            }
+          }
+        </optgroup>
+        <optgroup label="Pools">
+          @for (pool of pools; track pool.id; let i = $index) {
+            @if (payload.sourceZone !== pool.id) {
+              <option [value]="pool.id">Pool {{ i + 1 }}</option>
+            }
+          }
+        </optgroup>
+      </select>
+    </div>
+  </div>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-secondary" (click)="cancel()">Abbrechen</button>
+  <button type="button" class="btn btn-primary" (click)="confirmMove()">Verschieben</button>
+</div>

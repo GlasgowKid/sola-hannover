@@ -1,8 +1,9 @@
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
 import { BsModalService } from 'ngx-bootstrap/modal';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
+import { MoveModalComponent } from '../move-modal/move-modal.component';
 import { GroupingOption, GroupSortOption, GroupWrapper, SortOption, StammesEinteilungComponent } from './stammes-einteilung.component';
 
 describe('StammesEinteilungComponent', () => {
@@ -508,6 +509,45 @@ describe('StammesEinteilungComponent', () => {
       expect((result[0] as GroupWrapper).name).toBe('Ort: Hannover');
       expect((result[1] as GroupWrapper).name).toBe('Ort: Bremen');
       expect((result[2] as GroupWrapper).name).toBe('Ort: Berlin');
+    });
+  });
+
+  describe('Modal für Move Feature', () => {
+    beforeEach(() => {
+      const modalService = spectator.inject(BsModalService);
+      (modalService.show as jest.Mock).mockClear();
+    });
+
+    it('sollte das Modal öffnen', () => {
+      const payload: any = { type: 'PARTICIPANT', sourceZone: 'main', data: spectator.component.$anmeldungen()[0] };
+
+      const modalService = spectator.inject(BsModalService);
+      const bsModalRefMock = { content: { onClose: of(null) } };
+      jest.spyOn(modalService, 'show').mockReturnValue(bsModalRefMock as any);
+
+      spectator.component.openMoveModal(payload);
+
+      expect(modalService.show).toHaveBeenCalledWith(MoveModalComponent, expect.objectContaining({ class: 'modal-lg' }));
+      const args = (modalService.show as jest.Mock).mock.calls[0];
+      expect(args[1].initialState.payload).toBe(payload);
+      expect(args[1].initialState.extractedParticipants.length).toBe(1);
+    });
+
+    it('sollte Elemente verschieben, wenn das Modal ein gültiges Target zurückgibt', () => {
+      const payload: any = { type: 'PARTICIPANT', sourceZone: 'main', data: spectator.component.$anmeldungen()[0] };
+
+      const modalService = spectator.inject(BsModalService);
+      const onCloseSubject = new Subject<string | null>();
+      const bsModalRefMock = { content: { onClose: onCloseSubject } };
+      jest.spyOn(modalService, 'show').mockReturnValue(bsModalRefMock as any);
+
+      const dropSpy = jest.spyOn(spectator.component, 'onDrop');
+      spectator.component.openMoveModal(payload);
+
+      onCloseSubject.next('stamm-1');
+
+      expect(dropSpy).toHaveBeenCalled();
+      expect(spectator.component.$staemme()[1].length).toBe(1);
     });
   });
 });

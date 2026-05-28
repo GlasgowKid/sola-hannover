@@ -32,6 +32,7 @@ export class ParticipantListComponent {
   dragLeaveNode = output<DragEvent>();
   dropNode = output<DragEvent>();
   dragStartItem = output<{ event: DragEvent, payload: DragPayload }>();
+  dblClickItem = output<{ event: MouseEvent, payload: DragPayload }>();
 
   isGroupWrapper(item: any): item is GroupWrapper {
     return item && item.isWrapper === true;
