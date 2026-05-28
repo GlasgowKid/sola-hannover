@@ -1,11 +1,22 @@
+:host {
+  display: flex;
+  flex-direction: column;
+}
+.card {
+  flex-grow: 1;
+}
 .cursor-grab {
   cursor: grab;
 }
 .cursor-grab:active {
   cursor: grabbing;
 }
-.group-body {
-  min-height: 120px;
+.group-wrapper-card {
+  min-width: 140px;
+  border: 2px dashed var(--bs-border-color);
+}
+.wrapper-body {
+  min-height: 40px;
 }
 .drag-over {
   background-color: var(--bs-primary-bg-subtle) !important;

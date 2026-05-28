@@ -41,55 +41,18 @@
   >
     @for (item of group(); track getItemId(item)) {
       @if (isGroupWrapper(item)) {
-        <div
-          class="card shadow-sm group-wrapper-card d-flex flex-column mb-1 cursor-grab"
-          draggable="true"
-          (dragstart)="
-            dragStartItem.emit({
-              event: $event,
-              payload: { type: 'GROUP', sourceZone: 'stamm-' + stammIdx(), data: item },
-            })
-          "
-          (dblclick)="
-            dblClickItem.emit({
-              event: $event,
-              payload: { type: 'GROUP', sourceZone: 'stamm-' + stammIdx(), data: item },
-            });
-            $event.stopPropagation()
-          "
-        >
-          <div class="text-center text-muted small bg-light border-bottom" style="opacity: 0.5">
-            @if (item.name) {
-              <span class="ms-1 fw-bold">{{ item.name }}</span>
-            }
-          </div>
-          <div class="card-body p-1 bg-white">
-            @for (p of item.participants; track p.id) {
-              <app-participant-card
-                [item]="p"
-                [sourceZone]="'stamm-' + stammIdx()"
-                [showIds]="showIds()"
-                [details]="details()"
-                [allParticipants]="allParticipants()"
-                [currentZoneParticipants]="flatParticipants()"
-                (dragStartNode)="
-                  dragStartItem.emit({
-                    event: $event,
-                    payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: p },
-                  })
-                "
-                (dblClickNode)="
-                  dblClickItem.emit({
-                    event: $event,
-                    payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: p },
-                  })
-                "
-                (resetNode)="resetItem.emit(p)"
-              >
-              </app-participant-card>
-            }
-          </div>
-        </div>
+        <app-group-wrapper-card
+          class="mb-1"
+          [group]="item"
+          [sourceZone]="'stamm-' + stammIdx()"
+          [showIds]="showIds()"
+          [details]="details()"
+          [allParticipants]="allParticipants()"
+          [currentZoneParticipants]="flatParticipants()"
+          (dragStartItem)="dragStartItem.emit($event)"
+          (dblClickItem)="dblClickItem.emit($event)"
+          (resetItem)="resetItem.emit($event)"
+        ></app-group-wrapper-card>
       } @else {
         <app-participant-card
           [item]="item"

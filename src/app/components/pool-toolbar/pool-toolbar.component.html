@@ -35,78 +35,25 @@
       >
       <div class="d-flex gap-2 align-items-stretch pool-wrappers">
         @for (wrap of pools(); track wrap.id) {
-          <div
-            class="card shadow-sm group-wrapper-card d-flex flex-column cursor-grab"
-            draggable="true"
-            (dragstart)="
-              dragStartItem.emit({
-                event: $event,
-                payload: { type: 'POOL', sourceZone: wrap.id, data: wrap.participants },
-              })
-            "
-            (dblclick)="
-              dblClickItem.emit({
-                event: $event,
-                payload: { type: 'POOL', sourceZone: wrap.id, data: wrap.participants },
-              });
-              $event.stopPropagation()
-            "
-          >
-            <div class="text-center text-muted small bg-light border-bottom" style="opacity: 0.5">
-              @if (wrap.name) {
-                <span class="ms-1 fw-bold">{{ wrap.name }}</span>
-              }
-            </div>
-            @if (details()) {
-              <div
-                class="p-1 bg-light border-bottom text-center small text-muted user-select-none"
-                style="font-size: 0.7rem"
-                (dblclick)="
-                  dblClickItem.emit({
-                    event: $event,
-                    payload: { type: 'POOL', sourceZone: wrap.id, data: wrap.participants },
-                  });
-                  $event.stopPropagation()
-                "
-              >
-                <span class="text-primary">{{ getBoysCount(wrap) }}</span> /
-                <span class="text-danger">{{ getGirlsCount(wrap) }}</span>
-                | Ø: {{ getAverageAge(wrap) }} | Var: {{ getAgeVariance(wrap) }}
-              </div>
-            }
-            <div
-              class="card-body p-1 flex-grow-1 bg-white wrapper-body"
-              [class.drag-over]="dragOverZone() === wrap.id"
-              (dragover)="dragOverNode.emit({ event: $event, zone: wrap.id })"
-              (dragleave)="dragLeaveNode.emit({ event: $event, zone: wrap.id })"
-              (drop)="dropNode.emit({ event: $event, zone: wrap.id })"
-            >
-              @for (p of wrap.participants; track p.id) {
-                <app-participant-card
-                  [item]="p"
-                  [sourceZone]="wrap.id"
-                  [showIds]="showIds()"
-                  [details]="details()"
-                  [allParticipants]="allParticipants()"
-                  [currentZoneParticipants]="wrap.participants"
-                  (dragStartNode)="
-                    dragStartItem.emit({
-                      event: $event,
-                      payload: { type: 'PARTICIPANT', sourceZone: wrap.id, data: p },
-                    })
-                  "
-                  (dblClickNode)="
-                    dblClickItem.emit({
-                      event: $event,
-                      payload: { type: 'PARTICIPANT', sourceZone: wrap.id, data: p },
-                    })
-                  "
-                  (resetNode)="resetItem.emit(p)"
-                >
-                </app-participant-card>
-              }
-            </div>
-          </div>
+          <app-group-wrapper-card
+            [group]="wrap"
+            [sourceZone]="wrap.id"
+            payloadType="POOL"
+            [payloadData]="wrap.participants"
+            [showIds]="showIds()"
+            [details]="details()"
+            [allParticipants]="allParticipants()"
+            [currentZoneParticipants]="wrap.participants"
+            [isDropZone]="true"
+            [dragOverZone]="dragOverZone()"
+            [showPoolStats]="true"
+            (dragStartItem)="dragStartItem.emit($event)"
+            (dblClickItem)="dblClickItem.emit($event)"
+            (resetItem)="resetItem.emit($event)"
+            (dragOverNode)="dragOverNode.emit({ event: $event, zone: wrap.id })"
+            (dragLeaveNode)="dragLeaveNode.emit({ event: $event, zone: wrap.id })"
+            (dropNode)="dropNode.emit({ event: $event, zone: wrap.id })"
+          ></app-group-wrapper-card>
         }
       </div>
     </div>

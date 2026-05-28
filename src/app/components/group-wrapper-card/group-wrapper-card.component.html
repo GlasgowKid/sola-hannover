@@ -1,0 +1,73 @@
+<div
+  class="card shadow-sm group-wrapper-card d-flex flex-column cursor-grab"
+  draggable="true"
+  (dragstart)="
+    dragStartItem.emit({
+      event: $event,
+      payload: { type: payloadType(), sourceZone: sourceZone(), data: payloadDataComputed },
+    })
+  "
+  (dblclick)="
+    dblClickItem.emit({
+      event: $event,
+      payload: { type: payloadType(), sourceZone: sourceZone(), data: payloadDataComputed },
+    });
+    $event.stopPropagation()
+  "
+>
+  <div class="text-center text-muted small bg-light border-bottom" style="opacity: 0.5">
+    @if (group().name) {
+      <span class="ms-1 fw-bold">{{ group().name }}</span>
+    }
+  </div>
+
+  @if (showPoolStats() && details()) {
+    <div
+      class="p-1 bg-light border-bottom text-center small text-muted user-select-none"
+      style="font-size: 0.7rem"
+      (dblclick)="
+        dblClickItem.emit({
+          event: $event,
+          payload: { type: payloadType(), sourceZone: sourceZone(), data: payloadDataComputed },
+        });
+        $event.stopPropagation()
+      "
+    >
+      <span class="text-primary">{{ boysCount() }}</span> /
+      <span class="text-danger">{{ girlsCount() }}</span>
+      | Ø: {{ averageAge() }} | Var: {{ ageVariance() }}
+    </div>
+  }
+
+  <div
+    class="card-body p-1 flex-grow-1 bg-white wrapper-body"
+    [class.drag-over]="isDropZone() && dragOverZone() === sourceZone()"
+    (dragover)="isDropZone() ? dragOverNode.emit($event) : null"
+    (dragleave)="isDropZone() ? dragLeaveNode.emit($event) : null"
+    (drop)="isDropZone() ? dropNode.emit($event) : null"
+  >
+    @for (p of group().participants; track p.id) {
+      <app-participant-card
+        [item]="p"
+        [sourceZone]="sourceZone()"
+        [showIds]="showIds()"
+        [details]="details()"
+        [allParticipants]="allParticipants()"
+        [currentZoneParticipants]="currentZoneParticipants()"
+        (dragStartNode)="
+          dragStartItem.emit({
+            event: $event,
+            payload: { type: 'PARTICIPANT', sourceZone: sourceZone(), data: p },
+          })
+        "
+        (dblClickNode)="
+          dblClickItem.emit({
+            event: $event,
+            payload: { type: 'PARTICIPANT', sourceZone: sourceZone(), data: p },
+          })
+        "
+        (resetNode)="resetItem.emit(p)"
+      ></app-participant-card>
+    }
+  </div>
+</div>

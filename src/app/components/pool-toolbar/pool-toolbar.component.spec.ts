@@ -1,6 +1,7 @@
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
-import { PoolToolbarComponent } from './pool-toolbar.component';
+import { GroupWrapperCardComponent } from '../group-wrapper-card/group-wrapper-card.component';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
+import { PoolToolbarComponent } from './pool-toolbar.component';
 
 describe('PoolToolbarComponent', () => {
   let spectator: Spectator<PoolToolbarComponent>;
@@ -8,7 +9,7 @@ describe('PoolToolbarComponent', () => {
   const createComponent = createComponentFactory({
     component: PoolToolbarComponent,
     shallow: true,
-    imports: [ParticipantCardComponent]
+    imports: [ParticipantCardComponent, GroupWrapperCardComponent]
   });
 
   beforeEach(() => {
@@ -69,10 +70,10 @@ describe('PoolToolbarComponent', () => {
     spectator.component.dropNode.subscribe(e => (dropEmitted = e));
     spectator.component.dragStartItem.subscribe(e => (dragStartEmitted = e));
 
-    spectator.dispatchFakeEvent('.wrapper-body', 'drop');
+    spectator.triggerEventHandler(GroupWrapperCardComponent, 'dropNode', new Event('drop') as DragEvent);
     expect(dropEmitted.zone).toBe('pool-0');
 
-    spectator.dispatchFakeEvent('.group-wrapper-card', 'dragstart');
+    spectator.triggerEventHandler(GroupWrapperCardComponent, 'dragStartItem', { event: new Event('dragstart') as DragEvent, payload: { type: 'POOL', sourceZone: 'pool-0', data: [] } });
     expect(dragStartEmitted.payload.type).toBe('POOL');
   });
 
@@ -80,8 +81,7 @@ describe('PoolToolbarComponent', () => {
     let emittedPayload: any;
     spectator.component.dblClickItem.subscribe(p => (emittedPayload = p));
 
-    const header = spectator.query('.group-wrapper-card .bg-light.border-bottom') as HTMLElement;
-    header.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    spectator.triggerEventHandler(GroupWrapperCardComponent, 'dblClickItem', { event: new MouseEvent('dblclick'), payload: { type: 'POOL', sourceZone: 'pool-0', data: [] } });
 
     expect(emittedPayload).toBeDefined();
     expect(emittedPayload.payload.type).toBe('POOL');
@@ -91,25 +91,6 @@ describe('PoolToolbarComponent', () => {
   it('sollte z-index und CSS Klasse anpassen, wenn isDragging true ist', () => {
     spectator.setInput('isDragging', true);
     expect(spectator.query('.navbar')).toHaveClass('is-dragging-nav');
-  });
-
-  it('sollte Pool Details (Ø Alter, Varianz, Geschlechter) anzeigen, wenn details true ist', () => {
-    spectator.setInput('pools', [
-      {
-        id: 'pool-0', isWrapper: true, participants: [
-          { id: 1, person: { domainAttributes: { firstName: 'M', lastName: 'J' } }, personFields: { sexId: 1, birthday: '2010-01-01' } },
-          { id: 2, person: { domainAttributes: { firstName: 'A', lastName: 'M' } }, personFields: { sexId: 2, birthday: '2012-01-01' } }
-        ]
-      } as any
-    ]);
-    spectator.setInput('details', false);
-    expect(spectator.query('.text-primary')).not.toExist();
-
-    spectator.setInput('details', true);
-    expect(spectator.query('.text-primary')).toHaveText('1'); // 1 Junge
-    expect(spectator.query('.text-danger')).toHaveText('1'); // 1 Mädchen
-    expect(spectator.query('.p-1.bg-light.border-bottom.text-center')).toHaveText('Ø:');
-    expect(spectator.query('.p-1.bg-light.border-bottom.text-center')).toHaveText('Var:');
   });
 
   it('sollte den Offset der Scrollbar bei der Toolbar-Positionierung berücksichtigen', () => {

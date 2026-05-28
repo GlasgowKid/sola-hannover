@@ -1,13 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { GroupMember } from '../../../utils/ct-types';
 import { getMemberAge } from '../../../utils/age.util';
+import { GroupMember } from '../../../utils/ct-types';
+import { GroupWrapperCardComponent } from '../group-wrapper-card/group-wrapper-card.component';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
 import { DragPayload, GroupWrapper, StammItem } from '../stammes-einteilung/stammes-einteilung.component';
 
 @Component({
   selector: 'app-stamm',
   standalone: true,
-  imports: [ParticipantCardComponent],
+  imports: [ParticipantCardComponent, GroupWrapperCardComponent],
   templateUrl: './stamm.component.html',
   styleUrl: './stamm.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

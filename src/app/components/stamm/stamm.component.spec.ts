@@ -1,7 +1,8 @@
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
-import { StammComponent } from './stamm.component';
-import { ParticipantCardComponent } from '../participant-card/participant-card.component';
 import { GroupMember } from '../../../utils/ct-types';
+import { GroupWrapperCardComponent } from '../group-wrapper-card/group-wrapper-card.component';
+import { ParticipantCardComponent } from '../participant-card/participant-card.component';
+import { StammComponent } from './stamm.component';
 
 describe('StammComponent', () => {
   let spectator: Spectator<StammComponent>;
@@ -9,7 +10,7 @@ describe('StammComponent', () => {
   const createComponent = createComponentFactory({
     component: StammComponent,
     shallow: true,
-    imports: [ParticipantCardComponent]
+    imports: [ParticipantCardComponent, GroupWrapperCardComponent]
   });
 
   const mockParticipant = { id: 1, person: { domainAttributes: { firstName: 'M', lastName: 'M' } } } as GroupMember;
@@ -50,11 +51,11 @@ describe('StammComponent', () => {
     expect(spectator.query('.group-body')).toHaveClass('drag-over');
   });
 
-  it('sollte Group-Wrapper-Cards rendern und dragstart für Gruppen emitten', () => {
+  it('sollte Group-Wrapper-Cards rendern und dragstart weiterleiten', () => {
     let emittedPayload: any;
     spectator.component.dragStartItem.subscribe(p => (emittedPayload = p));
 
-    spectator.dispatchFakeEvent('.group-wrapper-card', 'dragstart');
+    spectator.triggerEventHandler(GroupWrapperCardComponent, 'dragStartItem', { event: new Event('dragstart') as DragEvent, payload: { type: 'GROUP', sourceZone: 'stamm-0', data: mockWrapper } });
     expect(emittedPayload.payload.type).toBe('GROUP');
     expect(emittedPayload.payload.sourceZone).toBe('stamm-0');
   });

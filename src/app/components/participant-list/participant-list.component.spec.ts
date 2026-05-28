@@ -2,6 +2,7 @@ import { FormsModule } from '@angular/forms';
 import { By } from '@angular/platform-browser';
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
 import { GroupMember } from '../../../utils/ct-types';
+import { GroupWrapperCardComponent } from '../group-wrapper-card/group-wrapper-card.component';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
 import { StammItem } from '../stammes-einteilung/stammes-einteilung.component';
 import { ParticipantListComponent } from './participant-list.component';
@@ -12,7 +13,7 @@ describe('ParticipantListComponent', () => {
   const createComponent = createComponentFactory({
     component: ParticipantListComponent,
     shallow: true, // Mockt die ParticipantCardComponent
-    imports: [ParticipantCardComponent, FormsModule]
+    imports: [ParticipantCardComponent, GroupWrapperCardComponent, FormsModule]
   });
 
   const mockParticipants: StammItem[] = [
@@ -106,8 +107,7 @@ describe('ParticipantListComponent', () => {
     let emittedPayload: any;
     spectator.component.dblClickItem.subscribe(p => (emittedPayload = p));
 
-    const header = spectator.query('.group-wrapper-card .bg-light.border-bottom') as HTMLElement;
-    header.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    spectator.triggerEventHandler(GroupWrapperCardComponent, 'dblClickItem', { event: new MouseEvent('dblclick'), payload: { type: 'GROUP', sourceZone: 'main', data: {} } });
 
     expect(emittedPayload).toBeDefined();
     expect(emittedPayload.payload.type).toBe('GROUP');

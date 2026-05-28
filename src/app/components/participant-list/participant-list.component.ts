@@ -1,13 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GroupMember } from '../../../utils/ct-types';
+import { GroupWrapperCardComponent } from '../group-wrapper-card/group-wrapper-card.component';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
 import { DragPayload, GroupWrapper, StammItem } from '../stammes-einteilung/stammes-einteilung.component';
 
 @Component({
   selector: 'app-participant-list',
   standalone: true,
-  imports: [ParticipantCardComponent, FormsModule],
+  imports: [ParticipantCardComponent, GroupWrapperCardComponent, FormsModule],
   templateUrl: './participant-list.component.html',
   styleUrl: './participant-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

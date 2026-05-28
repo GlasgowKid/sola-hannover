@@ -1,14 +1,13 @@
 import { PercentPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, HostListener, input, output, signal } from '@angular/core';
 import { GroupMember } from '../../../utils/ct-types';
-import { getMemberAge } from '../../../utils/age.util';
-import { ParticipantCardComponent } from '../participant-card/participant-card.component';
+import { GroupWrapperCardComponent } from '../group-wrapper-card/group-wrapper-card.component';
 import { DragPayload, GroupWrapper } from '../stammes-einteilung/stammes-einteilung.component';
 
 @Component({
   selector: 'app-pool-toolbar',
   standalone: true,
-  imports: [ParticipantCardComponent, PercentPipe],
+  imports: [GroupWrapperCardComponent, PercentPipe],
   templateUrl: './pool-toolbar.component.html',
   styleUrl: './pool-toolbar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -51,29 +50,5 @@ export class PoolToolbarComponent {
     if (this.isDragging()) {
       this.dragTop.set(window.innerHeight - 95 + window.scrollY);
     }
-  }
-
-  getBoysCount(wrap: GroupWrapper) {
-    return wrap.participants.filter(m => m.personFields?.sexId === 1).length;
-  }
-
-  getGirlsCount(wrap: GroupWrapper) {
-    return wrap.participants.filter(m => m.personFields?.sexId === 2).length;
-  }
-
-  getValidAges(wrap: GroupWrapper) {
-    return wrap.participants.map(m => getMemberAge(m)).filter((a): a is number => a !== null);
-  }
-
-  getAverageAge(wrap: GroupWrapper) {
-    const ages = this.getValidAges(wrap);
-    return ages.length ? Math.round(10 * ages.reduce((a, b) => a + b, 0) / ages.length) / 10 : 0;
-  }
-
-  getAgeVariance(wrap: GroupWrapper) {
-    const ages = this.getValidAges(wrap);
-    if (ages.length <= 1) return 0;
-    const mean = ages.reduce((a, b) => a + b, 0) / ages.length;
-    return Math.round((ages.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / ages.length) * 10) / 10;
   }
 }
