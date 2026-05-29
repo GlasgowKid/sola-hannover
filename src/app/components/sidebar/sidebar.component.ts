@@ -18,6 +18,5 @@ export class SidebarComponent {
     .map(route => ({
       path: '/' + route.path,
       title: route.data!['title'],
-      icon: route.data!['icon']
     }));
 }

@@ -8,13 +8,13 @@ export const routes: Routes = [
         path: 'anmeldungen',
         component: AnmeldungenComponent,
         canDeactivate: [unsavedChangesGuard],
-        data: { title: 'Anmeldungen', icon: 'bi-people-fill' }
+        data: { title: 'Anmeldungen' }
     },
     {
         path: 'einteilung',
         component: StammesEinteilungComponent,
         canDeactivate: [unsavedChangesGuard],
-        data: { title: 'Stammeseinteilung', icon: 'bi-gear-fill' }
+        data: { title: 'Stammeseinteilung' }
     },
     { path: '', redirectTo: 'anmeldungen', pathMatch: 'full' },
     { path: '**', redirectTo: 'anmeldungen' }
