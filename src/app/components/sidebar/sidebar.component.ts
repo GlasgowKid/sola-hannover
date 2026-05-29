@@ -8,7 +8,7 @@ import { routes } from '../../app.routes';
   imports: [RouterLink, RouterLinkActive],
   styleUrl: './sidebar.component.scss',
   host: {
-    'class': 'text-white bg-secondary p-2 shadow d-flex flex-column align-items-center flex-shrink-0'
+    'class': 'text-white bg-secondary p-2 shadow d-flex flex-column align-items-center flex-shrink-0 overflow-y-auto'
   },
   templateUrl: './sidebar.component.html'
 })
