@@ -1,5 +1,6 @@
 :host {
   display: block;
-  height: 100%;
+  height: calc(100vh - var(--menu-height, 0px)); /* Fallback für alte Browser */
+  height: calc(100dvh - var(--menu-height, 0px)); /* dvh berücksichtigt mobile Adresszeilen */
   overflow: hidden;
 }
