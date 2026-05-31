@@ -1,6 +1,42 @@
 @use '@siemens/ngx-datatable/themes/bootstrap' as siemens-bootstrap;
 @use 'bootstrap/scss/bootstrap' as bs;
 
+// 2. ChurchTools-Header explizit vor Bootstrap schützen
+// Stellt die Basis-Tags wieder auf das Verhalten zurück, das ChurchTools (Tailwind) erwartet.
+#navigation {
+  font-family: Lato, sans-serif;
+  font-size: 14px;
+
+  a {
+    color: inherit;
+    text-decoration: none;
+    &:hover {
+      color: inherit;
+      text-decoration: none;
+    }
+  }
+  button {
+    background: transparent;
+    border: none;
+  }
+  ul,
+  ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0;
+  }
+}
+
+// 4. Eigene Custom-Styles für die App
 .ngx-datatable.bootstrap {
   @extend .table;
 }
@@ -82,7 +118,9 @@
 /* ngx-datatable Pager Kontrast-Korrektur */
 .ngx-datatable.bootstrap .datatable-footer .datatable-pager {
   ul li {
-    button, a, .page-button {
+    button,
+    a,
+    .page-button {
       color: var(--bs-dark, #212529) !important;
       background: transparent !important;
 
@@ -91,7 +129,7 @@
       }
 
       &:hover {
-        background-color: var(--bs-dark, #212529) !important; 
+        background-color: var(--bs-dark, #212529) !important;
         color: var(--bs-white, #ffffff) !important;
       }
     }
@@ -112,7 +150,7 @@
       opacity: 0.5;
       cursor: not-allowed;
       background-color: transparent !important;
-      
+
       &:hover {
         background-color: transparent !important;
         color: var(--bs-secondary, #6c757d) !important;
@@ -125,7 +163,7 @@
 .link-modal {
   text-decoration: underline dashed !important;
   text-underline-offset: 3px;
-  
+
   &:hover {
     text-decoration-style: solid !important;
   }
