@@ -5,6 +5,14 @@
     <span class="fw-bold small">Alle Teilnehmer</span>
     <span class="badge bg-light text-dark">{{ participants().length }}</span>
   </div>
+  <div class="p-1.5 bg-light border-bottom">
+    <select class="form-select form-select-sm rounded-0" (change)="roleFilterChange.emit($event)">
+    <option value="">Alle Mitarbeiter Rollen</option>
+    @for (role of availableMaRollen(); track role) {
+      <option [value]="role">{{ role }}</option>
+    }
+  </select>
+  </div>
   @if (hasAnmeldungen()) {
     <div class="p-1.5 bg-light border-bottom">
       <select class="form-select form-select-sm rounded-0" (change)="filterChange.emit($event)">

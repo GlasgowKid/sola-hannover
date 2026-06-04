@@ -1,0 +1,82 @@
+<div class="card shadow-sm h-100 border-primary">
+  <div
+    class="card-header bg-primary text-white p-2 d-flex justify-content-between align-items-center small"
+    [class.cursor-grab]="TN().length > 0"
+    [attr.draggable]="TN().length > 0 ? true : null"
+    (dragstart)="
+      TN().length > 0
+        ? dragStartItem.emit({
+            event: $event,
+            payload: { type: 'STAMM', sourceZone: 'stamm-' + stammIdx(), data: TN() },
+          })
+        : null
+    "
+    (dblclick)="
+      TN().length > 0
+        ? dblClickItem.emit({
+            event: $event,
+            payload: { type: 'STAMM', sourceZone: 'stamm-' + stammIdx(), data: TN() },
+          })
+        : null;
+      $event.stopPropagation()
+    "
+  >
+    <div class="text-truncate fw-semibold">MA Stamm {{ stammIdx() + 1 }}</div>
+    <span class="badge bg-light text-dark ms-2 flex-shrink-0">
+      <span class="text-primary">{{ boysCount() }}</span> /
+      <span class="text-danger">{{ girlsCount() }}</span>
+    </span>
+  </div>
+  <div class="p-1 bg-light border-bottom small text-center text-muted">
+    Ø Alter: {{ averageAge() }} | Varianz: {{ ageVariance() }}
+  </div>
+
+  <div
+    class="card-body p-2 group-body"
+    [class.drag-over]="dragOverZone() === 'stamm-' + stammIdx()"
+    [attr.data-id]="stammIdx()"
+    (dragover)="dragOverNode.emit($event)"
+    (dragleave)="dragLeaveNode.emit($event)"
+    (drop)="dropNode.emit($event)"
+  >
+    @for (item of TN(); track getItemId(item)) {
+      @if (isGroupWrapper(item)) {
+        <app-group-wrapper-card
+          class="mb-1"
+          [group]="item"
+          [sourceZone]="'stamm-' + stammIdx()"
+          [showIds]="showIds()"
+          [details]="details()"
+          [allParticipants]="allParticipants()"
+          [currentZoneParticipants]="flatParticipants()"
+          (dragStartItem)="dragStartItem.emit($event)"
+          (dblClickItem)="dblClickItem.emit($event)"
+          (resetItem)="resetItem.emit($event)"
+        ></app-group-wrapper-card>
+      } @else {
+        <app-participant-card
+          [item]="item"
+          [sourceZone]="'stamm-' + stammIdx()"
+          [showIds]="showIds()"
+          [details]="details()"
+          [allParticipants]="allParticipants()"
+          [currentZoneParticipants]="flatParticipants()"
+          (dragStartNode)="
+            dragStartItem.emit({
+              event: $event,
+              payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: item },
+            })
+          "
+          (dblClickNode)="
+            dblClickItem.emit({
+              event: $event,
+              payload: { type: 'PARTICIPANT', sourceZone: 'stamm-' + stammIdx(), data: item },
+            })
+          "
+          (resetNode)="resetItem.emit(item)"
+        >
+        </app-participant-card>
+      }
+    }
+  </div>
+</div>

@@ -6,10 +6,10 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
   selector: 'app-sola-selector',
   standalone: true,
   imports: [ReactiveFormsModule],
-  templateUrl: './sola-selector.component.html',
-  styleUrl: './sola-selector.component.scss',
+  templateUrl: './advanced-sola-selector.component.html',
+  styleUrl: './advanced-sola-selector.component.scss',
 })
-export class SolaSelectorComponent {
+export class AdvancedSolaSelectorComponent {
   private readonly fb = inject(FormBuilder);
 
   readonly jahre = input<any[] | null | undefined>([]);
@@ -40,5 +40,14 @@ export class SolaSelectorComponent {
           this.weekSelected.emit(week);
         }
       });
+    effect(() => {
+      const jahreList = this.jahre();
+      if (jahreList && jahreList.length > 0) {
+        const sortedJahre = [...jahreList].sort((a, b) => b.name.localeCompare(a.name));
+        if (this.formGroup.controls.selectedYear.value === null) {
+          this.formGroup.controls.selectedYear.setValue(sortedJahre[0].id);
+        }
+      }
+    });
   }
 }

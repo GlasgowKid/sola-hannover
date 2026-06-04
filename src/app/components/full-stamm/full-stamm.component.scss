@@ -1,0 +1,13 @@
+.cursor-grab {
+  cursor: grab;
+}
+.cursor-grab:active {
+  cursor: grabbing;
+}
+.group-body {
+  min-height: 120px;
+}
+.drag-over {
+  background-color: var(--bs-primary-bg-subtle) !important;
+  border: 2px dashed var(--bs-primary) !important;
+}

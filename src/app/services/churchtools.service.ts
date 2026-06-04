@@ -86,6 +86,23 @@ export class ChurchtoolsService {
     );
   }
 
+  getAdvancedAnmeldungen(groupId: number): Observable<GroupMember[]> {
+    const params = { personFields: ["birthday", "sexId", "street", "zip", "city"], group_member_statuses: ["active"] };
+    return this.loggedIn$.pipe(
+      switchMap(
+        (loggedIn) => loggedIn
+          ? from(churchtoolsClient.getAllPages<GroupMember>(`/groups/${groupId}/members`, params))
+          : of([])
+      )
+    );
+  }
+
+  getAdvancedTeilnehmer(groupId: number): Observable<GroupMember[]> {
+    return this.getAnmeldungen(groupId).pipe(
+      map(members => members.filter(m => m.groupTypeRoleId === 32))
+    );
+  }
+
   getGroupMemberFields(groupId: number): Observable<GroupMemberFieldGroup[]> {
     return this.loggedIn$.pipe(
       switchMap(

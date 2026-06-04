@@ -19,11 +19,14 @@ export class ParticipantListComponent {
   showIds = input<boolean>(false);
   hasAnmeldungen = input<boolean>(false);
   availableAges = input<(number | null)[]>([]);
+  availableMaRollen = input<(string | null)[]>([]);
+  dynamicRoles = input<any[]>([]);
   details = input<boolean>(false);
   allParticipants = input<GroupMember[]>([]);
   activeGrouping = input<string>('none');
   currentSort = input<string>('lastName_asc');
 
+  roleFilterChange = output<Event>();
   filterChange = output<Event>();
   sortChange = output<string>();
   groupingChange = output<string>();
