@@ -13,7 +13,7 @@ describe('StammesEinteilungComponent', () => {
     getGroupTypes: jest.fn().mockReturnValue(of([])),
     getJahre: jest.fn().mockReturnValue(of([])),
     getSolawochen: jest.fn().mockReturnValue(of([])),
-    getTeilnehmer: jest.fn().mockReturnValue(of([])),
+    getAdvancedTeilnehmer: jest.fn().mockReturnValue(of([])),
     getGroupRoles: jest.fn().mockReturnValue(of([])),
   };
 

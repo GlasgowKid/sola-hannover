@@ -98,7 +98,7 @@ export class ChurchtoolsService {
   }
 
   getAdvancedTeilnehmer(groupId: number): Observable<GroupMember[]> {
-    return this.getAnmeldungen(groupId).pipe(
+    return this.getAdvancedAnmeldungen(groupId).pipe(
       map(members => members.filter(m => m.groupTypeRoleId === 32))
     );
   }

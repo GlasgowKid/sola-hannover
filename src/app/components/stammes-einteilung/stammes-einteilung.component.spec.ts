@@ -352,7 +352,7 @@ describe('StammesEinteilungComponent', () => {
 
       // Simulieren, dass eine Woche ausgewählt ist und der Service die Daten zurückgibt
       spectator.component.selectedWeek.set(123);
-      jest.spyOn((spectator.component as any).churchToolsService, 'getTeilnehmer').mockReturnValue(of([p1, p2, p3]));
+      jest.spyOn((spectator.component as any).churchToolsService, 'getAdvancedTeilnehmer').mockReturnValue(of([p1, p2, p3]));
 
       await spectator.component.loadGroupsServer();
 

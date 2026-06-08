@@ -3,7 +3,7 @@ import { getMemberAge } from '../../../utils/age.util';
 import { GroupMember } from '../../../utils/ct-types';
 import { GroupWrapperCardComponent } from '../group-wrapper-card/group-wrapper-card.component';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
-import { DragPayload, GroupWrapper, StammItem } from '../stammes-einteilung/stammes-einteilung.component';
+import { DragPayload, GroupWrapper, StammItem } from '../advanced-stammes-einteilung/advanced-stammes-einteilung.component';
 
 @Component({
   selector: 'app-stamm',
@@ -13,7 +13,7 @@ import { DragPayload, GroupWrapper, StammItem } from '../stammes-einteilung/stam
   styleUrl: './full-stamm.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MAStammComponent {
+export class FullStammComponent {
   stammIdx = input.required<number>();
   TN = input.required<StammItem[]>();
   dragOverZone = input<string | null>(null);

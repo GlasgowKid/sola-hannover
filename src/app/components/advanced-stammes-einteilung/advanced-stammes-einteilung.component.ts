@@ -14,7 +14,7 @@ import { MoveModalComponent } from '../move-modal/move-modal.component';
 import { ParticipantListComponent } from '../participant-list/participant-list.component';
 import { PoolToolbarComponent } from '../pool-toolbar/pool-toolbar.component';
 import { AdvancedSolaSelectorComponent } from '../advanced-sola-selector/advanced-sola-selector.component';
-import { StammComponent } from '../stamm/stamm.component';
+import { FullStammComponent } from '../full-stamm/full-stamm.component';
 
 export interface GroupWrapper {
   id: string;
@@ -64,7 +64,7 @@ export enum GroupSortOption {
 @Component({
   selector: 'app-stammeseinteilung',
   standalone: true,
-  imports: [NgxDatatableModule, AdvancedSolaSelectorComponent, ParticipantListComponent, StammComponent, PoolToolbarComponent, FormsModule],
+  imports: [NgxDatatableModule, AdvancedSolaSelectorComponent, ParticipantListComponent, FullStammComponent, PoolToolbarComponent, FormsModule],
   templateUrl: './advanced-stammes-einteilung.component.html',
   styleUrl: './advanced-stammes-einteilung.component.scss',
 })
