@@ -65,26 +65,24 @@
     </div>
   </div>
 
-  @if ($anmeldungen().length > 0) {
-    <app-pool-toolbar
-      [pools]="$pools()"
-      [dragOverZone]="dragOverZone()"
-      [showIds]="showIds()"
-      [details]="details()"
-      [allParticipants]="allParticipants()"
-      [progress]="$progress()"
-      [isDirty]="isDirty()"
-      [isDragging]="isDragging()"
-      (toggleIds)="toggleIds()"
-      (toggleDetails)="toggleDetails()"
-      (confirmLoadServer)="confirmLoadServer()"
-      (saveGroupsServer)="saveGroupsServer()"
-      (dragOverNode)="allowDrop($event.event, $event.zone)"
-      (dragLeaveNode)="onDragLeave($event.event, $event.zone)"
-      (dropNode)="onDrop($event.event, $event.zone)"
-      (dragStartItem)="onDragStart($event.event, $event.payload)"
-      (dblClickItem)="openMoveModal($event.payload)"
-      (resetItem)="resetParticipant($event)"
-    ></app-pool-toolbar>
-  }
+  <app-pool-toolbar
+    [pools]="$pools()"
+    [dragOverZone]="dragOverZone()"
+    [showIds]="showIds()"
+    [details]="details()"
+    [allParticipants]="allParticipants()"
+    [progress]="$progress()"
+    [isDirty]="isDirty()"
+    [isDragging]="isDragging()"
+    (toggleIds)="toggleIds()"
+    (toggleDetails)="toggleDetails()"
+    (confirmLoadServer)="confirmLoadServer()"
+    (saveGroupsServer)="saveGroupsServer()"
+    (dragOverNode)="allowDrop($event.event, $event.zone)"
+    (dragLeaveNode)="onDragLeave($event.event, $event.zone)"
+    (dropNode)="onDrop($event.event, $event.zone)"
+    (dragStartItem)="onDragStart($event.event, $event.payload)"
+    (dblClickItem)="openMoveModal($event.payload)"
+    (resetItem)="resetParticipant($event)"
+  ></app-pool-toolbar>
 </div>
