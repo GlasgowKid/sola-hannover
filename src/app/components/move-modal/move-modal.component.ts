@@ -5,7 +5,7 @@ import { SortableModule } from 'ngx-bootstrap/sortable';
 import { Subject } from 'rxjs';
 import { GroupMember } from '../../../utils/ct-types';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
-import { DragPayload, GroupWrapper } from '../stammes-einteilung/stammes-einteilung.component';
+import { DragPayload, GroupWrapper } from '../advanced-stammes-einteilung/advanced-stammes-einteilung.component';
 
 @Component({
   selector: 'app-move-modal',

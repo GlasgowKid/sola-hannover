@@ -1,12 +1,12 @@
 import { createComponentFactory, Spectator } from '@ngneat/spectator/jest';
-import { SolaSelectorComponent } from './sola-selector.component';
+import { AdvancedSolaSelectorComponent } from './advanced-sola-selector.component';
 import { ReactiveFormsModule } from '@angular/forms';
 
-describe('SolaSelectorComponent', () => {
-  let spectator: Spectator<SolaSelectorComponent>;
+describe('AdvancedSolaSelectorComponent', () => {
+  let spectator: Spectator<AdvancedSolaSelectorComponent>;
 
   const createComponent = createComponentFactory({
-    component: SolaSelectorComponent,
+    component: AdvancedSolaSelectorComponent,
     imports: [ReactiveFormsModule],
     shallow: true,
   });

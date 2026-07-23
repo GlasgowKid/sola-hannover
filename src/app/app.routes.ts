@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { AnmeldungenComponent } from './components/anmeldungen/anmeldungen.component';
-import { StammesEinteilungComponent } from './components/stammes-einteilung/stammes-einteilung.component';
 import { unsavedChangesGuard } from './guards/unsavedChanges.guard';
 import { AdvancedStammesEinteilungComponent } from './components/advanced-stammes-einteilung/advanced-stammes-einteilung.component';
 
@@ -12,16 +11,10 @@ export const routes: Routes = [
         data: { title: 'Anmeldungen' }
     },
     {
-        path: 'einteilung',
-        component: StammesEinteilungComponent,
-        canDeactivate: [unsavedChangesGuard],
-        data: { title: 'Stammeseinteilung' }
-    },
-    {
         path: 'advancedeinteilung',
         component: AdvancedStammesEinteilungComponent,
         canDeactivate: [unsavedChangesGuard],
-        data: { title: 'Stammeseinteilung ++' }
+        data: { title: 'Stammeseinteilung' }
     },
     { path: '', redirectTo: 'anmeldungen', pathMatch: 'full' },
     { path: '**', redirectTo: 'anmeldungen' }

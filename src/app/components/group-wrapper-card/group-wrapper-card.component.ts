@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { getMemberAge } from '../../../utils/age.util';
 import { GroupMember } from '../../../utils/ct-types';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
-import { DragPayload, GroupWrapper } from '../stammes-einteilung/stammes-einteilung.component';
+import { DragPayload, GroupWrapper } from '../advanced-stammes-einteilung/advanced-stammes-einteilung.component';
 
 @Component({
   selector: 'app-group-wrapper-card',

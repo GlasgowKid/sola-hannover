@@ -2,7 +2,7 @@ import { PercentPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, HostListener, input, output, signal } from '@angular/core';
 import { GroupMember } from '../../../utils/ct-types';
 import { GroupWrapperCardComponent } from '../group-wrapper-card/group-wrapper-card.component';
-import { DragPayload, GroupWrapper } from '../stammes-einteilung/stammes-einteilung.component';
+import { DragPayload, GroupWrapper } from '../advanced-stammes-einteilung/advanced-stammes-einteilung.component';
 
 @Component({
   selector: 'app-pool-toolbar',
@@ -12,6 +12,8 @@ import { DragPayload, GroupWrapper } from '../stammes-einteilung/stammes-einteil
   styleUrl: './pool-toolbar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
+
+
 export class PoolToolbarComponent {
   pools = input<GroupWrapper[]>([]);
   dragOverZone = input<string | null>(null);
@@ -35,6 +37,8 @@ export class PoolToolbarComponent {
   dragStartItem = output<{ event: DragEvent, payload: DragPayload }>();
   dblClickItem = output<{ event: MouseEvent, payload: DragPayload }>();
   resetItem = output<GroupMember>();
+
+  exportCsv = output<void>();
 
   constructor() {
     effect(() => {

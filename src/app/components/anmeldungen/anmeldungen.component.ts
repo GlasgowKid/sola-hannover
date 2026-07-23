@@ -9,7 +9,7 @@ import { GroupMember } from '../../../utils/ct-types';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
 import { SofaAnmeldungViewModel, SofaAnmeldungenComponent } from '../sofa-anmeldungen/sofa-anmeldungen.component';
-import { SolaSelectorComponent } from '../sola-selector/sola-selector.component';
+import { AdvancedSolaSelectorComponent } from '../advanced-sola-selector/advanced-sola-selector.component';
 import { SolaTeilnehmerAnmeldungenComponent } from '../sola-teilnehmer-anmeldungen/sola-teilnehmer-anmeldungen.component';
 
 export interface MemberUpdatePayload {
@@ -25,7 +25,7 @@ export interface MemberUpdatePayload {
     NgTemplateOutlet,
     NgxDatatableModule,
     SofaAnmeldungenComponent,
-    SolaSelectorComponent,
+    AdvancedSolaSelectorComponent,
     SolaTeilnehmerAnmeldungenComponent,
   ],
   templateUrl: './anmeldungen.component.html',

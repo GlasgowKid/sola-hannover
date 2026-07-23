@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { GroupMember } from '../../../utils/ct-types';
 import { GroupWrapperCardComponent } from '../group-wrapper-card/group-wrapper-card.component';
 import { ParticipantCardComponent } from '../participant-card/participant-card.component';
-import { DragPayload, GroupWrapper, StammItem } from '../stammes-einteilung/stammes-einteilung.component';
+import { DragPayload, GroupWrapper, StammItem } from '../advanced-stammes-einteilung/advanced-stammes-einteilung.component';
 
 @Component({
   selector: 'app-participant-list',
