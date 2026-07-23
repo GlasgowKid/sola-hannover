@@ -7,7 +7,7 @@ import { BsModalService } from 'ngx-bootstrap/modal';
 import { distinctUntilChanged, firstValueFrom, of, Subject, switchMap, take } from 'rxjs';
 import { getMemberAge, getMemberBirthday } from '../../../utils/age.util';
 import { GroupMember } from '../../../utils/ct-types';
-import { buildWunschClusters, getWunschStatus } from '../../../utils/wunsch.util';
+import { buildWunschClusters, getWunschStatus, getWunsch } from '../../../utils/wunsch.util';
 import { ChurchtoolsService } from '../../services/churchtools.service';
 import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
 import { MoveModalComponent } from '../move-modal/move-modal.component';
@@ -41,6 +41,12 @@ export interface DragPayload {
 interface UnifiedFilter {
   type: 'all' | 'gender' | 'maRolle' | 'roleId' | 'age' | 'wunsch';
   value: any;
+}
+
+function getGenderSymbol(sexId?: number | unknown): string {
+  if (sexId === 1) return 'm';
+  if (sexId === 2) return 'f';
+  return '';
 }
 
 export enum SortOption {
@@ -778,4 +784,82 @@ export class AdvancedStammesEinteilungComponent {
   }
   private showErrorModal(msg: string) { this.modalService.show(ConfirmModalComponent, { initialState: { title: 'Fehler', message: msg, cancelText: '', confirmText: 'Ok' } }); }
   private showInfoModal(msg: string) { this.modalService.show(ConfirmModalComponent, { initialState: { title: 'Info', message: msg, cancelText: '', confirmText: 'Ok' } }); }
+
+  exportToCsv() {
+    const csvData = exportParticipantsByWunsch(this.$anmeldungen(), this.allParticipants());
+    downloadWunschExportCsv(csvData, `teilnehmer_wuensche_${this.selectedWeek() || 'export'}.csv`);
+  }
 }
+
+export function exportParticipantsByWunsch(
+  participants: GroupMember[],
+  allParticipants: GroupMember[] = participants
+): string {
+  const { clusters, withoutGroup } = buildWunschClusters(participants, allParticipants);
+
+  const groupedList: StammItem[] = [
+    ...clusters.map((cluster, index): GroupWrapper => ({
+      id: `wrapper-wunsch-${index}`,
+      isWrapper: true,
+      participants: cluster
+    })),
+    ...withoutGroup
+  ];
+
+  const csvLines: string[] = [
+    'sep=\t',
+    'Gender\tName\tSurname\tWunsch1\tWunsch2\t'
+  ];
+
+  const formatMemberRow = (member: GroupMember): string => {
+    const gender = getGenderSymbol(member.personFields?.sexId);
+    const firstName = member.person?.domainAttributes?.firstName || '';
+    const lastName = member.person?.domainAttributes?.lastName || '';
+
+    const w1Obj = getWunsch(member, 'Wunsch 1', allParticipants) as any;
+    const w2Obj = getWunsch(member, 'Wunsch 2', allParticipants) as any;
+
+    const w1 = w1Obj?.matchedPersonName || w1Obj?.text || w1Obj?.value || '';
+    const w2 = w2Obj?.matchedPersonName || w2Obj?.text || w2Obj?.value || '';
+
+    return `${gender}\t${firstName}\t${lastName}\t${w1}\t${w2}\t`;
+  };
+
+  groupedList.forEach(item => {
+    if ((item as GroupWrapper).isWrapper) {
+      const wrapper = item as GroupWrapper;
+      wrapper.participants.forEach(member => {
+        csvLines.push(formatMemberRow(member));
+      });
+    } else {
+      csvLines.push(formatMemberRow(item as GroupMember));
+    }
+    csvLines.push('');
+  });
+
+  return csvLines.join('\r\n');
+}
+
+export function downloadWunschExportCsv(csvContent: string, filename = 'teilnehmer_wuensche.csv') {
+  const charCodes = new Uint16Array(csvContent.length + 1);
+  
+  charCodes[0] = 0xFEFF; 
+  
+  for (let i = 0; i < csvContent.length; i++) {
+    charCodes[i + 1] = csvContent.charCodeAt(i);
+  }
+
+  const blob = new Blob([charCodes], { type: 'text/csv;charset=utf-16le;' });
+
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
