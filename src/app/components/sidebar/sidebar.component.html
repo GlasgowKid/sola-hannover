@@ -1,12 +1,20 @@
-<a routerLink="/" class="d-block text-center text-white text-decoration-none mb-3 mt-2">
-  <h6 class="display-6">SOLA Admin</h6>
-</a>
-<ul class="nav nav-pills flex-column w-100">
-  @for (item of menuItems; track item.path) {
-    <li class="nav-item mb-2">
-      <a [routerLink]="item.path" routerLinkActive="active" class="nav-link text-white text-center">
-        {{ item.title }}
-      </a>
-    </li>
-  }
-</ul>
+<div class="sidebar-container d-flex flex-column">
+  <a routerLink="/" class="d-flex align-items-center text-decoration-none brand-header">
+    <span class="brand-title">SOLA Admin</span>
+  </a>
+
+  <ul class="nav nav-pills flex-column w-100 gap-1 mt-1">
+    @for (item of menuItems; track item.path) {
+      <li class="nav-item">
+        <a 
+          [routerLink]="item.path" 
+          routerLinkActive="active" 
+          [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+          class="nav-link d-flex align-items-center gap-2.5"
+        >
+          <span class="text-truncate">{{ item.title }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+</div>

@@ -2,5 +2,12 @@
   display: block;
   height: calc(100vh - var(--menu-height, 0px)); /* Fallback für alte Browser */
   height: calc(100dvh - var(--menu-height, 0px)); /* dvh berücksichtigt mobile Adresszeilen */
+  background-color: #f8f9fa;
   overflow: hidden;
+}
+
+app-sidebar {
+  display: flex;
+  flex-shrink: 0;
+  background-color: #ffffff;
 }
